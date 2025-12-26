@@ -1,0 +1,121 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.navbar-logo {
+  font-size: 20px;
+  font-weight: bold;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 20px;
+}
+
+.navbar-links a {
+  text-decoration: none;
+  color: #111827;
+  font-weight: 500;
+}
+
+.navbar-links a.active {
+  color: #2563eb;
+}
+
+/* User */
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.role-badge {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.user-dropdown {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.caret {
+  margin-left: 4px;
+}
+
+/* Dropdown */
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  width: 160px;
+  z-index: 100;
+}
+
+.dropdown-menu button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropdown-menu button:hover {
+  background: #f3f4f6;
+}
+
+.logout-btn {
+  color: #dc2626;
+}
+
+/* Hamburger */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.hamburger span {
+  height: 3px;
+  width: 22px;
+  background: #111827;
+  margin: 4px 0;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .navbar-links {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    background: white;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    display: none;
+  }
+
+  .navbar-links.active {
+    display: flex;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+}
