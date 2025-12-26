@@ -1,0 +1,94 @@
+.tenants-page {
+    padding: 2rem;
+    background-color: var(--background-bg);
+    min-height: calc(100vh - 64px);
+    animation: fadeIn 0.5s ease-out;
+}
+
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 2rem;
+}
+
+.tenants-card {
+    background: var(--surface-white);
+    border-radius: var(--radius-xl);
+    padding: 0;
+    box-shadow: var(--shadow-md);
+    max-width: 100%;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.tenants-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tenants-table th,
+.tenants-table td {
+    text-align: left;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #f3f4f6;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.tenants-table th {
+    font-weight: 600;
+    background-color: #f9fafb;
+    color: var(--text-main);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.5rem;
+}
+
+.tenants-table tr:last-child td {
+    border-bottom: none;
+}
+
+.tenants-table tr:hover td {
+    background-color: #f9fafb;
+}
+
+/* Status colors can reuse general status classes or define specific ones here */
+
+/* Column Widths & Alignment */
+.tenants-table th:nth-child(1),
+.tenants-table td:nth-child(1) {
+    width: 25%;
+    text-align: left;
+}
+
+.tenants-table th:nth-child(2),
+.tenants-table td:nth-child(2) {
+    width: 20%;
+    text-align: left;
+}
+
+.tenants-table th:nth-child(3),
+.tenants-table td:nth-child(3) {
+    width: 15%;
+    text-align: left;
+    /* Plan names like 'Basic' read better left or center? Image shows dash, maybe left is safe. */
+}
+
+.tenants-table th:nth-child(4),
+.tenants-table td:nth-child(4),
+.tenants-table th:nth-child(5),
+.tenants-table td:nth-child(5) {
+    width: 10%;
+    text-align: center;
+    /* Center numbers */
+}
+
+.tenants-table th:nth-child(6),
+.tenants-table td:nth-child(6) {
+    width: 20%;
+    text-align: right;
+    /* Status badge usually looks good right aligned or center. Let's try right to match Actions often, or center. Image shows 'ACTIVE' on right? No, in the image it looks middle-ish but misaligned. Let's go with right for status to align with typical table edges or Center. Let's try Center for Status.*/
+    text-align: center;
+}
