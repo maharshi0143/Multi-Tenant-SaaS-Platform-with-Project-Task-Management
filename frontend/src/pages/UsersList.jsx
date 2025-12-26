@@ -118,7 +118,15 @@ export default function UsersList() {
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                         <button className="secondary-btn table-action-btn" onClick={() => { setSelectedUser(u); setShowModal(true); }}>Edit</button>
-                        <button className="danger-btn table-action-btn" onClick={async () => { if (!confirm('Delete user?')) return; try { await api.delete(`/users/${u.id}`); fetchUsers(); } catch (e) { alert('Failed to delete user'); } }}>Delete</button>
+                        <button className="danger-btn table-action-btn" onClick={async () => {
+                          if (!confirm('Delete user?')) return;
+                          try {
+                            await api.delete(`/users/${u.id}`);
+                            fetchUsers();
+                          } catch (e) {
+                            alert(e.response?.data?.message || 'Failed to delete user');
+                          }
+                        }}>Delete</button>
                       </div>
                     </td>
                   </tr>

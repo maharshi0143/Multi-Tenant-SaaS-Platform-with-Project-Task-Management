@@ -29,9 +29,15 @@ instance.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response && err.response.status === 401) {
-      localStorage.removeItem('token');
-      sessionStorage.removeItem('token');
-      try { window.location.href = '/login'; } catch (e) { }
+      // Don't redirect if we are already on login page or if the error is from the login endpoint itself
+      const isLoginRequest = err.config.url.includes('/auth/login');
+      const isLoginPage = window.location.pathname === '/login';
+
+      if (!isLoginRequest && !isLoginPage) {
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
+        try { window.location.href = '/login'; } catch (e) { }
+      }
     }
     return Promise.reject(err);
   }
