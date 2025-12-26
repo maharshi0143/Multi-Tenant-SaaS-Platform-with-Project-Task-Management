@@ -135,12 +135,20 @@ const updateUser = async (req, res) => {
         params.push(userId, tenantId);
         const query = `UPDATE users SET ${updates.join(', ')} 
                        WHERE id = $${params.length - 1} AND tenant_id = $${params.length} 
-                       RETURNING id, email, full_name as "fullName", role, is_active as "isActive"`;
+                       RETURNING id, email, full_name as "fullName", role, is_active as "isActive", tenant_id`;
 
         const result = await pool.query(query, params);
         if (result.rows.length === 0) return res.status(404).json({ success: false, message: "User not found." });
 
-        res.json({ success: true, data: result.rows[0] });
+        const updatedUser = result.rows[0];
+
+        // SYNC: If Tenant Admin status changed, update Tenant status
+        if (updatedUser.role === 'tenant_admin' && isActive !== undefined) {
+            const newTenantStatus = isActive ? 'active' : 'suspended';
+            await pool.query('UPDATE tenants SET status = $1 WHERE id = $2', [newTenantStatus, updatedUser.tenant_id]);
+        }
+
+        res.json({ success: true, data: updatedUser });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -159,10 +167,17 @@ const deleteUser = async (req, res) => {
             return res.status(403).json({ success: false, message: "Security error: You cannot delete your own account." });
         }
 
-        const result = await pool.query(
-            'DELETE FROM users WHERE id = $1 AND tenant_id = $2 RETURNING id',
-            [userId, tenantId]
-        );
+        // Allow Super Admin to delete any user; Tenant Admin can only delete users in their tenant
+        let query, params;
+        if (req.user.role === 'super_admin') {
+            query = 'DELETE FROM users WHERE id = $1 RETURNING id';
+            params = [userId];
+        } else {
+            query = 'DELETE FROM users WHERE id = $1 AND tenant_id = $2 RETURNING id';
+            params = [userId, tenantId];
+        }
+
+        const result = await pool.query(query, params);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, message: "User not found or belongs to another tenant." });
@@ -170,6 +185,33 @@ const deleteUser = async (req, res) => {
 
         res.json({ success: true, message: "User account has been removed." });
     } catch (error) {
+        // Fallback: If FK error persists, try manual cleanup
+        if (error.code === '23503') {
+            try {
+                // Manually unlink dependencies to allow deletion
+                await pool.query('BEGIN');
+                await pool.query('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = $1', [userId]);
+                await pool.query('UPDATE projects SET created_by = NULL WHERE created_by = $1', [userId]);
+                await pool.query('UPDATE audit_logs SET user_id = NULL WHERE user_id = $1', [userId]);
+
+                // Retry Delete
+                let query, params;
+                if (req.user.role === 'super_admin') {
+                    query = 'DELETE FROM users WHERE id = $1';
+                    params = [userId];
+                } else {
+                    query = 'DELETE FROM users WHERE id = $1 AND tenant_id = $2';
+                    params = [userId, tenantId];
+                }
+                await pool.query(query, params);
+                await pool.query('COMMIT');
+
+                return res.json({ success: true, message: "User account has been removed (dependencies unlinked)." });
+            } catch (cleanupError) {
+                await pool.query('ROLLBACK');
+                return res.status(500).json({ success: false, message: "Force delete failed: " + cleanupError.message });
+            }
+        }
         res.status(500).json({ success: false, message: error.message });
     }
 };
