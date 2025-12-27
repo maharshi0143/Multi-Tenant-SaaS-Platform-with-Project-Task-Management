@@ -13,14 +13,14 @@ export function AuthProvider({ children }) {
       const res = await axios.get("/auth/me");
       const data = res.data.data;
 
-      // 🔥 FIX: Backend might return tenant_id or tenantId; normalize it
+
       const userData = {
         ...data,
-        tenantId: data.tenantId || data.tenant_id || null, 
+        tenantId: data.tenantId || data.tenant_id || null,
       };
 
       setUser(userData);
-      
+
       // Token Expiry Logic
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (token) {
@@ -41,7 +41,7 @@ export function AuthProvider({ children }) {
           }
         } catch (e) { /* ignore decode errors */ }
       }
-      return userData; 
+      return userData;
     } catch (err) {
       localStorage.removeItem("token");
       sessionStorage.removeItem("token");
@@ -58,19 +58,19 @@ export function AuthProvider({ children }) {
       // API 2: User Login
       const res = await axios.post("/auth/login", payload);
       const { token, user: loginUser } = res.data.data;
-      
+
       // Store the token immediately
       if (remember) localStorage.setItem("token", token);
       else sessionStorage.setItem("token", token);
-      
+
       // Update local state with normalized data to prevent the loop
       const normalizedUser = {
         ...loginUser,
         tenantId: loginUser.tenantId || loginUser.tenant_id || null
       };
-      
+
       setUser(normalizedUser);
-      
+
       // Return the user so LoginPage can perform navigate()
       return normalizedUser;
     } catch (error) {
@@ -85,9 +85,9 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem("token");
     sessionStorage.removeItem("token");
-    if (window.__logoutTimer) { 
-      clearTimeout(window.__logoutTimer); 
-      window.__logoutTimer = null; 
+    if (window.__logoutTimer) {
+      clearTimeout(window.__logoutTimer);
+      window.__logoutTimer = null;
     }
     setUser(null);
   };

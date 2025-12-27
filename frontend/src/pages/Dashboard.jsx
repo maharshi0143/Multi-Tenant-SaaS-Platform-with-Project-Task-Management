@@ -40,33 +40,29 @@ export default function Dashboard() {
 
 
 
-      // 3️⃣ Tasks (safe + minimal)
-      let assignedTasks = [];
+      // 3️⃣ Tasks (Efficient Single Call)
+      try {
+        const tasksRes = await api.get('/tasks', {
+          params: {
+            assignedTo: user.id,
+            limit: 5,
+            status: taskFilter || undefined // Pass filter directly to API if supported, or filter locally
+          }
+        });
 
-      for (const project of projects) {
-        try {
-          const tasksRes = await api.get(
-            `/tasks/projects/${project.id}`, { params: { assignedTo: user.id, limit: 5 } }
-          );
+        const tasks = tasksRes.data?.data?.tasks || [];
 
-          const tasks = Array.isArray(tasksRes.data.data)
-            ? tasksRes.data.data
-            : Array.isArray(tasksRes.data?.data?.tasks)
-              ? tasksRes.data.data.tasks
-              : [];
+        // Map project_name to projectName to match component expectation
+        const formattedTasks = tasks.map(t => ({
+          ...t,
+          projectName: t.project_name || t.projectName
+        }));
 
-          tasks.forEach((task) => {
-            assignedTasks.push({
-              ...task,
-              projectName: project.name,
-            });
-          });
-        } catch {
-          // ignore project task failures (safe)
-        }
+        setMyTasks(formattedTasks);
+      } catch (error) {
+        console.error("Failed to load tasks", error);
+        setMyTasks([]);
       }
-
-      setMyTasks(assignedTasks);
     } catch (error) {
       console.error("Dashboard load failed", error);
     } finally {
@@ -103,31 +99,48 @@ export default function Dashboard() {
             STATISTICS CARDS
         ====================== */}
         <div className="stats-grid">
-          <div
-            className="card clickable"
-            onClick={() => navigate("/projects")}
-          >
-            <h3>Total Projects</h3>
-            <p>{stats?.totalProjects ?? 0}</p>
-          </div>
+          {user.role === 'super_admin' ? (
+            <>
+              <div className="card clickable" onClick={() => navigate("/tenants")}>
+                <h3>Total Organizations</h3>
+                <p>{stats?.totalTenants ?? 0}</p>
+              </div>
+              <div className="card">
+                <h3>Total Users</h3>
+                <p>{stats?.totalUsers ?? 0}</p>
+              </div>
+              <div className="card">
+                <h3>Total Projects</h3>
+                <p>{stats?.totalProjects ?? 0}</p>
+              </div>
+              <div className="card">
+                <h3>Total Tasks</h3>
+                <p>{stats?.totalTasks ?? 0}</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="card clickable" onClick={() => navigate("/projects")}>
+                <h3>Total Projects</h3>
+                <p>{stats?.totalProjects ?? 0}</p>
+              </div>
 
-          <div
-            className="card clickable"
-            onClick={() => navigate("/tasks")}
-          >
-            <h3>Total Tasks</h3>
-            <p>{stats?.totalTasks ?? 0}</p>
-          </div>
+              <div className="card clickable" onClick={() => navigate("/tasks")}>
+                <h3>Total Tasks</h3>
+                <p>{stats?.totalTasks ?? 0}</p>
+              </div>
 
-          <div className="card success clickable">
-            <h3>Completed Tasks</h3>
-            <p>{stats?.completedTasks ?? 0}</p>
-          </div>
+              <div className="card card-success clickable">
+                <h3>Completed Tasks</h3>
+                <p>{stats?.completedTasks ?? 0}</p>
+              </div>
 
-          <div className="card warning clickable">
-            <h3>Pending Tasks</h3>
-            <p>{stats?.pendingTasks ?? 0}</p>
-          </div>
+              <div className="card card-warning clickable">
+                <h3>Pending Tasks</h3>
+                <p>{stats?.pendingTasks ?? 0}</p>
+              </div>
+            </>
+          )}
         </div>
 
         {/* ======================

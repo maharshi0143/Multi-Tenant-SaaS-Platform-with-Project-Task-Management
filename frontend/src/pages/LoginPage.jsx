@@ -37,7 +37,8 @@ export default function LoginPage() {
       const user = await login(loginData, remember);
 
       if (user && user.role === 'super_admin') {
-        navigate("/tenants");
+        // Fix: Redirect to Dashboard like other users
+        navigate("/dashboard");
       } else if (user) {
         navigate("/dashboard");
       }

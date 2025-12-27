@@ -78,11 +78,11 @@
   background: var(--primary-color);
 }
 
-.card.success::before {
+.card.card-success::before {
   background: var(--success-color);
 }
 
-.card.warning::before {
+.card.card-warning::before {
   background: var(--warning-color);
 }
 

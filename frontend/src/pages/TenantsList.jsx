@@ -20,6 +20,19 @@ export default function TenantsList() {
         fetchTenants();
     }, []);
 
+    const handleStatusChange = async (tenantId, newStatus) => {
+        try {
+            await axios.put(`/tenants/${tenantId}`, { status: newStatus });
+            // Update local state
+            setTenants(tenants.map(t =>
+                t.id === tenantId ? { ...t, status: newStatus } : t
+            ));
+        } catch (error) {
+            console.error("Failed to update status", error);
+            alert("Failed to update status");
+        }
+    };
+
     if (loading) return <div className="loading-text">Loading System Organizations...</div>;
 
     return (
@@ -50,9 +63,25 @@ export default function TenantsList() {
                                 <td>{t.totalUsers}</td>
                                 <td>{t.totalProjects}</td>
                                 <td>
-                                    <span className={`status ${t.status}`}>
-                                        {t.status}
-                                    </span>
+                                    <select
+                                        value={t.status}
+                                        onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                                        className={`status-select ${t.status}`}
+                                        style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '12px',
+                                            border: '1px solid #e2e8f0',
+                                            fontSize: '0.875rem',
+                                            fontWeight: 500,
+                                            cursor: 'pointer',
+                                            backgroundColor: t.status === 'active' ? '#dcfce7' : t.status === 'suspended' ? '#fee2e2' : '#f3f4f6',
+                                            color: t.status === 'active' ? '#166534' : t.status === 'suspended' ? '#991b1b' : '#374151'
+                                        }}
+                                    >
+                                        <option value="active">Active</option>
+                                        <option value="suspended">Suspended</option>
+                                        <option value="trial">Trial</option>
+                                    </select>
                                 </td>
                             </tr>
                         ))}
