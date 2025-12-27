@@ -75,14 +75,20 @@ export default function UserModal({ user, onClose, onSaved }) {
           </select>
         </div>
 
-        <div className="checkbox" style={{ marginTop: '1rem' }}>
-          <input
-            type="checkbox"
-            id="userActive"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-          />
-          <label htmlFor="userActive" style={{ margin: 0 }}>Active Account</label>
+        <div className="toggle-container">
+          <div>
+            <label htmlFor="userActive" className="toggle-label-text">Active Account</label>
+            <p className="toggle-description">Enable or disable user access</p>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              id="userActive"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+            />
+            <span className="slider round"></span>
+          </label>
         </div>
 
         <div className='modal-actions'>
