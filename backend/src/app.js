@@ -46,7 +46,7 @@ app.use(morgan('dev'));
 app.get('/api/health', async (req, res) => {
   try {
     // Logic must check actual database connection
-    await pool.query('SELECT 1'); 
+    await pool.query('SELECT 1');
     res.status(200).json({
       status: 'ok',
       database: 'connected',
@@ -72,9 +72,9 @@ app.use('/api/dashboard', dashboardRoutes);
 // 5. Global Error Handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(err.status || 500).json({ 
-    success: false, 
-    message: err.message || 'Internal Server Error' 
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error'
   });
 });
 

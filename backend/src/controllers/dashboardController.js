@@ -2,6 +2,28 @@ const { pool } = require("../config/db");
 
 const getDashboardStats = async (req, res) => {
   try {
+    // ✅ FIX: Separating Logic for Super Admin
+    if (req.user.role === 'super_admin') {
+      const stats = await pool.query(`
+            SELECT
+                (SELECT COUNT(*) FROM tenants) as "totalTenants",
+                (SELECT COUNT(*) FROM projects) as "totalProjects",
+                (SELECT COUNT(*) FROM users) as "totalUsers",
+                (SELECT COUNT(*) FROM tasks) as "totalTasks"
+        `);
+
+      return res.json({
+        success: true,
+        data: {
+          totalTenants: Number(stats.rows[0].totalTenants),
+          totalProjects: Number(stats.rows[0].totalProjects),
+          totalUsers: Number(stats.rows[0].totalUsers),
+          totalTasks: Number(stats.rows[0].totalTasks)
+        }
+      });
+    }
+
+    // ✅ Normal Logic for Tenants
     // ✅ MUST match JWT payload exactly
     const tenantId = req.user.tenant_id;
 
