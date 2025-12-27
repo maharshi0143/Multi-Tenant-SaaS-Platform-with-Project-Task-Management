@@ -1,17 +1,17 @@
 const { Pool } = require('pg');
-require('dotenv').config(); // Loads .env variables into process.env
+require('dotenv').config(); 
 
-// Configuration using Environment Variables
+
 const pool = new Pool({
   user: process.env.DB_USER,
-  host: process.env.DB_HOST,     // Must be 'database' in Docker
+  host: process.env.DB_HOST,     
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT || 5432,
-  // Recommended for production-ready SaaS:
-  max: 20,                       // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000,      // How long a client is allowed to remain idle
-  connectionTimeoutMillis: 2000, // How long to wait for a connection
+  
+  max: 20,                      
+  idleTimeoutMillis: 30000,      
+  connectionTimeoutMillis: 2000, 
 });
 
 // Test the connection logic
