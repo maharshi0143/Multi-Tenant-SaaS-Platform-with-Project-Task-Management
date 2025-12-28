@@ -68,7 +68,7 @@ const createProject = async (req, res) => {
 
     } catch (error) {
         await client.query('ROLLBACK');
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     } finally {
         client.release();
     }
@@ -80,18 +80,26 @@ const createProject = async (req, res) => {
  */
 const getProjects = async (req, res) => {
     try {
-        const tenantId = req.user.tenant_id;
+        const { tenant_id: tenantId, role } = req.user;
         const { status, search } = req.query;
 
         // Build dynamic query with optional filters
         let baseQuery = `
-            SELECT p.id, p.name, p.description, p.status, p.created_at as "createdAt",
+            SELECT p.id, p.name, p.description, p.status, p.created_at as "createdAt", t.name as "tenantName",
                    json_build_object('id', u.id, 'fullName', u.full_name, 'email', u.email) as "createdBy",
                    (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as task_count
             FROM projects p
             LEFT JOIN users u ON p.created_by = u.id
-            WHERE p.tenant_id = $1`;
-        const params = [tenantId];
+            LEFT JOIN tenants t ON p.tenant_id = t.id
+            WHERE 1=1`;
+
+        const params = [];
+
+        // Apply tenant isolation for non-super admins
+        if (role !== 'super_admin') {
+            params.push(tenantId);
+            baseQuery += ` AND p.tenant_id = $${params.length}`;
+        }
 
         if (status) {
             params.push(status);
@@ -116,8 +124,14 @@ const getProjects = async (req, res) => {
         const rows = projects.rows.map((r) => ({ ...r, task_count: parseInt(r.task_count, 10), completed_task_count: parseInt(r.completed_task_count || 0, 10) }));
 
         // total count for pagination (apply same filters)
-        let countQuery = `SELECT COUNT(*) FROM projects p WHERE p.tenant_id = $1`;
-        const countParams = [tenantId];
+        let countQuery = `SELECT COUNT(*) FROM projects p WHERE 1=1`;
+        const countParams = [];
+
+        if (role !== 'super_admin') {
+            countParams.push(tenantId);
+            countQuery += ` AND p.tenant_id = $${countParams.length}`;
+        }
+
         if (status) { countParams.push(status); countQuery += ` AND p.status ILIKE $${countParams.length}`; }
         if (search) { countParams.push(`%${search}%`); countQuery += ` AND p.name ILIKE $${countParams.length}`; }
         const countRes = await pool.query(countQuery, countParams);
@@ -125,7 +139,7 @@ const getProjects = async (req, res) => {
 
         res.json({ success: true, data: { projects: rows, total, pagination: { page, limit, totalPages: Math.ceil(total / limit) } } });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -165,7 +179,7 @@ const getProjectById = async (req, res) => {
 
         res.json({ success: true, data: project });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -191,7 +205,7 @@ const updateProject = async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Project not found" });
         res.json({ success: true, data: result.rows[0] });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 

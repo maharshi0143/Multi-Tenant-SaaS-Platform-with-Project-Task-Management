@@ -23,7 +23,7 @@ const getTenantDetails = async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Tenant not found" });
 
         const row = result.rows[0];
-        
+
         res.json({
             success: true,
             data: {
@@ -43,7 +43,7 @@ const getTenantDetails = async (req, res) => {
             }
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -63,9 +63,9 @@ const updateTenantProfile = async (req, res) => {
 
         // Requirement: Return 403 if tenant_admin tries to update restricted fields
         if (!isSuperAdmin && (status || subscriptionPlan || maxUsers || maxProjects)) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Tenant admins can only update organization name" 
+            return res.status(403).json({
+                success: false,
+                message: "Tenant admins can only update organization name"
             });
         }
 
@@ -85,7 +85,7 @@ const updateTenantProfile = async (req, res) => {
         }
 
         const result = await pool.query(query, params);
-        
+
         // Audit log for security tracking
         await pool.query(
             `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id) 
@@ -95,7 +95,7 @@ const updateTenantProfile = async (req, res) => {
 
         res.json({ success: true, message: "Tenant updated successfully", data: result.rows[0] });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -119,13 +119,13 @@ const getAllTenants = async (req, res) => {
             (SELECT COUNT(*) FROM projects WHERE tenant_id = t.id) as "totalProjects"
             FROM tenants t 
             ORDER BY created_at DESC LIMIT $1 OFFSET $2`, [limit, offset]);
-        
+
         const countRes = await pool.query('SELECT COUNT(*) FROM tenants');
         const totalTenants = parseInt(countRes.rows[0].count);
 
-        res.json({ 
-            success: true, 
-            data: { 
+        res.json({
+            success: true,
+            data: {
                 tenants: result.rows,
                 pagination: {
                     currentPage: page,
@@ -133,11 +133,11 @@ const getAllTenants = async (req, res) => {
                     totalTenants: totalTenants,
                     limit: limit
                 }
-            } 
+            }
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
-module.exports = { upgradeTenant: () => {}, updateTenantProfile, getAllTenants, getTenantDetails };
+module.exports = { upgradeTenant: () => { }, updateTenantProfile, getAllTenants, getTenantDetails };

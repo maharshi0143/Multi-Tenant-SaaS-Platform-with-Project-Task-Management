@@ -7,14 +7,14 @@ const { pool } = require('../config/db');
 const createTask = async (req, res) => {
     const { projectId } = req.params;
     let { title, description, assignedTo, priority, dueDate } = req.body;
-    
+
     // FIX: Match JWT payload keys (tenant_id and id)
     const { tenant_id: tenantId, id: userId } = req.user;
 
     try {
         // 1. Verify project belongs to user's tenant
         const projectCheck = await pool.query(
-            'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2', 
+            'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
             [projectId, tenantId]
         );
         if (projectCheck.rows.length === 0) {
@@ -41,7 +41,7 @@ const createTask = async (req, res) => {
 
         res.status(201).json({ success: true, data: newTask.rows[0] });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -90,7 +90,7 @@ const getTasks = async (req, res) => {
 
         res.json({ success: true, data: { tasks: result.rows, total, pagination: { page, limit, totalPages: Math.ceil(total / limit) } } });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -122,7 +122,7 @@ const updateTaskStatus = async (req, res) => {
 
         res.json({ success: true, data: result.rows[0] });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -168,7 +168,7 @@ const updateTask = async (req, res) => {
 
         res.json({ success: true, data: result.rows[0] });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -195,7 +195,7 @@ const deleteTask = async (req, res) => {
 
         res.json({ success: true, message: 'Task deleted' });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -205,20 +205,29 @@ const deleteTask = async (req, res) => {
  */
 const getAllTasks = async (req, res) => {
     const { assignedTo, status, priority, search, page = 1, limit = 50 } = req.query;
-    const { tenant_id: tenantId } = req.user;
+    const { tenant_id: tenantId, role } = req.user;
 
     try {
         const offset = (page - 1) * limit;
         let query = `
             SELECT t.id, t.title, t.description, t.status, t.priority, t.due_date as "dueDate", t.created_at as "createdAt",
                          json_build_object('id', u.id, 'fullName', u.full_name, 'email', u.email) as "assignedTo",
-                         p.id as project_id, p.name as project_name
+                         p.id as project_id, p.name as project_name,
+                         te.name as tenant_name
             FROM tasks t
             LEFT JOIN users u ON t.assigned_to = u.id
             LEFT JOIN projects p ON t.project_id = p.id
-            WHERE t.tenant_id = $1`;
+            LEFT JOIN tenants te ON t.tenant_id = te.id
+            WHERE 1=1`;
 
-        const params = [tenantId];
+        const params = [];
+
+        // Apply tenant isolation for non-super admins
+        if (role !== 'super_admin') {
+            params.push(tenantId);
+            query += ` AND t.tenant_id = $${params.length}`;
+        }
+
         if (assignedTo) { params.push(assignedTo); query += ` AND t.assigned_to = $${params.length}`; }
         if (status) { params.push(status); query += ` AND t.status = $${params.length}`; }
         if (priority) { params.push(priority); query += ` AND t.priority = $${params.length}`; }
@@ -230,8 +239,14 @@ const getAllTasks = async (req, res) => {
         const result = await pool.query(query, params);
 
         // total with same filters
-        let countQuery = `SELECT COUNT(*) FROM tasks t WHERE t.tenant_id = $1`;
-        const countParams = [tenantId];
+        let countQuery = `SELECT COUNT(*) FROM tasks t WHERE 1=1`;
+        const countParams = [];
+
+        if (role !== 'super_admin') {
+            countParams.push(tenantId);
+            countQuery += ` AND t.tenant_id = $${countParams.length}`;
+        }
+
         if (assignedTo) { countParams.push(assignedTo); countQuery += ` AND t.assigned_to = $${countParams.length}`; }
         if (status) { countParams.push(status); countQuery += ` AND t.status = $${countParams.length}`; }
         if (priority) { countParams.push(priority); countQuery += ` AND t.priority = $${countParams.length}`; }

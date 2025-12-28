@@ -64,7 +64,7 @@ const createUser = async (req, res) => {
         if (error.code === '23505') {
             return res.status(409).json({ success: false, message: "A user with this email already exists." });
         }
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     } finally {
         client.release();
     }
@@ -98,7 +98,7 @@ const getUsers = async (req, res) => {
         const result = await pool.query(query, params);
         res.json({ success: true, data: { users: result.rows, count: result.rows.length } });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -150,7 +150,7 @@ const updateUser = async (req, res) => {
 
         res.json({ success: true, data: updatedUser });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -212,7 +212,7 @@ const deleteUser = async (req, res) => {
                 return res.status(500).json({ success: false, message: "Force delete failed: " + cleanupError.message });
             }
         }
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 

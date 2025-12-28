@@ -12,7 +12,7 @@ const getAuditLogs = async (req, res) => {
         );
         res.json({ success: true, data: logs.rows });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 

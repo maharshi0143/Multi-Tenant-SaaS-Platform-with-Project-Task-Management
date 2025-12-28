@@ -60,7 +60,7 @@ const registerTenant = async (req, res) => {
         if (error.code === '23505') {
             return res.status(409).json({ success: false, message: "Subdomain or email already exists" });
         }
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     } finally {
         client.release();
     }
@@ -148,7 +148,7 @@ const login = async (req, res) => {
             }
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -172,7 +172,7 @@ const getMe = async (req, res) => {
 
         res.json({ success: true, data: userQuery.rows[0] });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -184,7 +184,7 @@ const forgotPassword = async (req, res) => {
 
         res.json({ success: true, message: "Reset link sent to your registered email." });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
@@ -202,7 +202,7 @@ const logout = async (req, res) => {
 
         res.json({ success: true, message: "Logged out successfully" });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
