@@ -5,9 +5,9 @@ services:
     image: postgres:15
     container_name: database
     environment:
-      POSTGRES_DB: saas_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: maharshi
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432" # Mandatory fixed port
     volumes:
@@ -16,7 +16,7 @@ services:
       - ./backend/migrations/init.sql:/docker-entrypoint-initdb.d/01_init.sql
       - ./backend/seeds/seedData.sql:/docker-entrypoint-initdb.d/02_seed.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -27,18 +27,18 @@ services:
     ports:
       - "5000:5000" # Mandatory fixed port
     environment:
-      DB_HOST: database
-      DB_PORT: 5432
-      DB_NAME: saas_db
-      DB_USER: postgres
-      DB_PASSWORD: maharshi
-      JWT_SECRET: your_jwt_secret_key_min_32_chars
-      FRONTEND_URL: http://frontend:3000
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
     depends_on:
       database:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,7 +50,7 @@ services:
       - "3000:3000" # Mandatory fixed port
     environment:
       # Browser-accessible URL (External)
-      - VITE_API_URL=http://localhost:5000/api 
+      - VITE_API_URL=${VITE_API_URL}
     depends_on:
       backend:
         condition: service_healthy
