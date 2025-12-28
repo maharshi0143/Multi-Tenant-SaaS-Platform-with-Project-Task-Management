@@ -103,46 +103,46 @@ export default function Dashboard() {
         {/* ======================
             STATISTICS CARDS
         ====================== */}
-        <div className="stats-grid">
+        <div className="stats-grid animate-fade-in">
           {user.role === 'super_admin' ? (
             <>
-              <div className="card clickable" onClick={() => navigate("/tenants")}>
+              <div className="card clickable card-hover animate-slide-up" onClick={() => navigate("/tenants")}>
                 <h3>Total Organizations</h3>
-                <p>{stats?.totalTenants ?? 0}</p>
+                <p className="stat-value">{stats?.totalTenants ?? 0}</p>
               </div>
-              <div className="card">
+              <div className="card card-hover animate-slide-up animate-slide-up-delay-1">
                 <h3>Total Users</h3>
-                <p>{stats?.totalUsers ?? 0}</p>
+                <p className="stat-value">{stats?.totalUsers ?? 0}</p>
               </div>
-              <div className="card">
+              <div className="card card-hover animate-slide-up animate-slide-up-delay-2">
                 <h3>Total Projects</h3>
-                <p>{stats?.totalProjects ?? 0}</p>
+                <p className="stat-value">{stats?.totalProjects ?? 0}</p>
               </div>
-              <div className="card">
+              <div className="card card-hover animate-slide-up animate-slide-up-delay-3">
                 <h3>Total Tasks</h3>
-                <p>{stats?.totalTasks ?? 0}</p>
+                <p className="stat-value">{stats?.totalTasks ?? 0}</p>
               </div>
             </>
           ) : (
             <>
-              <div className="card clickable" onClick={() => navigate("/projects")}>
+              <div className="card clickable card-hover animate-slide-up" onClick={() => navigate("/projects")}>
                 <h3>Total Projects</h3>
-                <p>{stats?.totalProjects ?? 0}</p>
+                <p className="stat-value">{stats?.totalProjects ?? 0}</p>
               </div>
 
-              <div className="card clickable" onClick={() => navigate("/tasks")}>
+              <div className="card clickable card-hover animate-slide-up animate-slide-up-delay-1" onClick={() => navigate("/tasks")}>
                 <h3>Total Tasks</h3>
-                <p>{stats?.totalTasks ?? 0}</p>
+                <p className="stat-value">{stats?.totalTasks ?? 0}</p>
               </div>
 
-              <div className="card card-success clickable">
+              <div className="card card-success clickable card-hover animate-slide-up animate-slide-up-delay-2">
                 <h3>Completed Tasks</h3>
-                <p>{stats?.completedTasks ?? 0}</p>
+                <p className="stat-value">{stats?.completedTasks ?? 0}</p>
               </div>
 
-              <div className="card card-warning clickable">
+              <div className="card card-warning clickable card-hover animate-slide-up animate-slide-up-delay-3">
                 <h3>Pending Tasks</h3>
-                <p>{stats?.pendingTasks ?? 0}</p>
+                <p className="stat-value">{stats?.pendingTasks ?? 0}</p>
               </div>
             </>
           )}
@@ -157,11 +157,11 @@ export default function Dashboard() {
           {recentProjects.length === 0 ? (
             <p>No projects found.</p>
           ) : (
-            <div className="recent-projects">
+            <div className="recent-projects animate-slide-up animate-slide-up-delay-2">
               {recentProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="recent-project-card"
+                  className="recent-project-card card-hover"
                   onClick={() => navigate(`/projects/${project.id}`)}
                 >
                   <h4>{project.name}</h4>
@@ -194,13 +194,13 @@ export default function Dashboard() {
           {myTasks.length === 0 ? (
             <p>{user.role === 'super_admin' ? 'No system tasks found.' : 'No tasks assigned to you.'}</p>
           ) : (
-            <div className="task-list">
+            <div className="task-list animate-slide-up animate-slide-up-delay-3">
               {myTasks
                 .filter(
                   (task) => !taskFilter || task.status === taskFilter
                 )
                 .map((task) => (
-                  <div key={task.id} className="task-card">
+                  <div key={task.id} className="task-card card-hover">
                     <h4>{task.title}</h4>
                     {task.tenant_name && <p style={{ fontSize: '0.85rem', color: '#666' }}>Tenant: {task.tenant_name}</p>}
                     <p>Project: {task.projectName}</p>

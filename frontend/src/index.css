@@ -497,6 +497,7 @@ body {
   min-width: 100px;
   text-align: center;
 }
+
 /* TOGGLE SWITCH */
 .switch {
   position: relative;
@@ -535,38 +536,202 @@ body {
   border-radius: 50%;
 }
 
-input:checked + .slider {
+input:checked+.slider {
   background-color: var(--primary-color);
 }
 
-input:focus + .slider {
+input:focus+.slider {
   box-shadow: 0 0 1px var(--primary-color);
 }
 
-input:checked + .slider:before {
+input:checked+.slider:before {
   transform: translateX(20px);
 }
 
 .toggle-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #f9fafb;
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    margin-top: 1rem;
-    border: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-top: 1rem;
+  border: 1px solid #e5e7eb;
 }
 
 .toggle-label-text {
-    font-weight: 500;
-    color: var(--text-main);
-    margin: 0;
+  font-weight: 500;
+  color: var(--text-main);
+  margin: 0;
 }
 
 .toggle-description {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
 }
 
+/* =========================================
+   UI ENHANCEMENTS & ANIMATIONS
+   ========================================= */
+
+/* KEYFRAMES */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes pulse-subtle {
+  0% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px rgba(79, 70, 229, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+  }
+}
+
+/* ANIMATION UTILITIES */
+.animate-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  opacity: 0;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up-delay-1 {
+  animation-delay: 0.1s;
+}
+
+.animate-slide-up-delay-2 {
+  animation-delay: 0.2s;
+}
+
+.animate-slide-up-delay-3 {
+  animation-delay: 0.3s;
+}
+
+/* GLASSMORPHISM */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+/* INTERACTIVE CARDS */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+}
+
+/* MODERN BUTTONS */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.btn-ripple::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%);
+  transform-origin: 50% 50%;
+}
+
+.btn-ripple:focus:not(:active)::after {
+  animation: ripple 1s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(20, 20);
+    opacity: 0;
+  }
+}
+
+/* ENHANCED INPUTS */
+.input-modern {
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.input-modern:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+  transform: scale(1.01);
+}
+
+/* STATS CARD ENHANCEMENTS */
+.stat-value {
+  background: -webkit-linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
