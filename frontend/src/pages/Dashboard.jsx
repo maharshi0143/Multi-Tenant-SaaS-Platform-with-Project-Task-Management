@@ -42,12 +42,17 @@ export default function Dashboard() {
 
       // 3️⃣ Tasks (Efficient Single Call)
       try {
+        const taskParams = {
+          limit: 5,
+          status: taskFilter || undefined
+        };
+
+        if (user.role !== 'super_admin') {
+          taskParams.assignedTo = user.id;
+        }
+
         const tasksRes = await api.get('/tasks', {
-          params: {
-            assignedTo: user.id,
-            limit: 5,
-            status: taskFilter || undefined // Pass filter directly to API if supported, or filter locally
-          }
+          params: taskParams
         });
 
         const tasks = tasksRes.data?.data?.tasks || [];
@@ -174,7 +179,7 @@ export default function Dashboard() {
             MY TASKS
         ====================== */}
         <section className="dashboard-section">
-          <h3>My Tasks</h3>
+          <h3>{user.role === 'super_admin' ? 'Recent System Tasks' : 'My Tasks'}</h3>
 
           <select
             value={taskFilter}
@@ -187,7 +192,7 @@ export default function Dashboard() {
           </select>
 
           {myTasks.length === 0 ? (
-            <p>No tasks assigned to you.</p>
+            <p>{user.role === 'super_admin' ? 'No system tasks found.' : 'No tasks assigned to you.'}</p>
           ) : (
             <div className="task-list">
               {myTasks
@@ -197,6 +202,7 @@ export default function Dashboard() {
                 .map((task) => (
                   <div key={task.id} className="task-card">
                     <h4>{task.title}</h4>
+                    {task.tenant_name && <p style={{ fontSize: '0.85rem', color: '#666' }}>Tenant: {task.tenant_name}</p>}
                     <p>Project: {task.projectName}</p>
                     <p>Priority: {task.priority}</p>
                     <p>
