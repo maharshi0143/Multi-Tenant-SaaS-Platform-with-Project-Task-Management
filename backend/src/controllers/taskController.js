@@ -52,7 +52,7 @@ const createTask = async (req, res) => {
 const getTasks = async (req, res) => {
     const { projectId } = req.params;
     const { status, assignedTo, priority, search } = req.query;
-    const { tenant_id: tenantId } = req.user; // FIX: Key mapping
+    const { tenant_id: tenantId, id: userId, role } = req.user; // FIX: Key mapping
 
     try {
         const page = parseInt(req.query.page || '1', 10);
@@ -67,8 +67,16 @@ const getTasks = async (req, res) => {
             WHERE t.project_id = $1 AND t.tenant_id = $2`;
 
         const params = [projectId, tenantId];
+
+        // Enforce isolation for regular users
+        if (role === 'user') {
+            params.push(userId);
+            baseQuery += ` AND t.assigned_to = $${params.length}`;
+        }
+
         if (status) { params.push(status); baseQuery += ` AND t.status = $${params.length}`; }
-        if (assignedTo) { params.push(assignedTo); baseQuery += ` AND t.assigned_to = $${params.length}`; }
+        // If regular user, assignedTo filter is redundant or must match their ID, but baseQuery handler above covers it
+        if (assignedTo && role !== 'user') { params.push(assignedTo); baseQuery += ` AND t.assigned_to = $${params.length}`; }
         if (priority) { params.push(priority); baseQuery += ` AND t.priority = $${params.length}`; }
         if (search) { params.push(`%${search}%`); baseQuery += ` AND t.title ILIKE $${params.length}`; }
 
@@ -80,8 +88,14 @@ const getTasks = async (req, res) => {
         // count with same filters
         let countQuery = `SELECT COUNT(*) FROM tasks t WHERE t.project_id = $1 AND t.tenant_id = $2`;
         const countParams = [projectId, tenantId];
+
+        if (role === 'user') {
+            countParams.push(userId);
+            countQuery += ` AND t.assigned_to = $${countParams.length}`;
+        }
+
         if (status) { countParams.push(status); countQuery += ` AND t.status = $${countParams.length}`; }
-        if (assignedTo) { countParams.push(assignedTo); countQuery += ` AND t.assigned_to = $${countParams.length}`; }
+        if (assignedTo && role !== 'user') { countParams.push(assignedTo); countQuery += ` AND t.assigned_to = $${countParams.length}`; }
         if (priority) { countParams.push(priority); countQuery += ` AND t.priority = $${countParams.length}`; }
         if (search) { countParams.push(`%${search}%`); countQuery += ` AND t.title ILIKE $${countParams.length}`; }
 
@@ -101,15 +115,22 @@ const getTasks = async (req, res) => {
 const updateTaskStatus = async (req, res) => {
     const { taskId } = req.params;
     const { status } = req.body;
-    const { tenant_id: tenantId, id: userId } = req.user;
+    const { tenant_id: tenantId, id: userId, role } = req.user;
 
     try {
-        const result = await pool.query(
-            `UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $2 AND tenant_id = $3 
-             RETURNING id, title, status, updated_at as "updatedAt"`,
-            [status, taskId, tenantId]
-        );
+        let query = `UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP 
+                     WHERE id = $2 AND tenant_id = $3`;
+        const params = [status, taskId, tenantId];
+
+        // Authorization: Regular users can only update their own tasks
+        if (role === 'user') {
+            params.push(userId);
+            query += ` AND assigned_to = $${params.length}`;
+        }
+
+        query += ` RETURNING id, title, status, updated_at as "updatedAt"`;
+
+        const result = await pool.query(query, params);
 
         if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Task not found" });
 
@@ -133,7 +154,12 @@ const updateTaskStatus = async (req, res) => {
 const updateTask = async (req, res) => {
     const { taskId } = req.params;
     const updates = req.body;
-    const { tenant_id: tenantId, id: userId } = req.user;
+    const { tenant_id: tenantId, id: userId, role } = req.user;
+
+    // Security: Regular users CANNOT reassign tasks
+    if (role === 'user' && updates.assignedTo && updates.assignedTo !== userId) {
+        return res.status(403).json({ success: false, message: "Forbidden: You cannot reassign tasks." });
+    }
 
     try {
         const fields = [];
@@ -152,9 +178,16 @@ const updateTask = async (req, res) => {
         if (fields.length === 0) return res.status(400).json({ message: "No valid fields provided" });
 
         params.push(taskId, tenantId);
-        const query = `UPDATE tasks SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-                       WHERE id = $${params.length - 1} AND tenant_id = $${params.length} 
-                       RETURNING id, title, description, status, priority, assigned_to as "assignedTo"`;
+        let query = `UPDATE tasks SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+                       WHERE id = $${params.length - 1} AND tenant_id = $${params.length}`;
+
+        // Authorization: Regular users can only update their own tasks
+        if (role === 'user') {
+            params.push(userId);
+            query += ` AND assigned_to = $${params.length}`;
+        }
+
+        query += ` RETURNING id, title, description, status, priority, assigned_to as "assignedTo"`;
 
         const result = await pool.query(query, params);
         if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Task not found" });
@@ -178,7 +211,12 @@ const updateTask = async (req, res) => {
  */
 const deleteTask = async (req, res) => {
     const { taskId } = req.params;
-    const { tenant_id: tenantId, id: userId } = req.user;
+    const { tenant_id: tenantId, id: userId, role } = req.user;
+
+    // Security: Regular users cannot delete tasks
+    if (role === 'user') {
+        return res.status(403).json({ success: false, message: "Forbidden: Only admins can delete tasks." });
+    }
 
     try {
         const result = await pool.query(
@@ -205,7 +243,7 @@ const deleteTask = async (req, res) => {
  */
 const getAllTasks = async (req, res) => {
     const { assignedTo, status, priority, search, page = 1, limit = 50 } = req.query;
-    const { tenant_id: tenantId, role } = req.user;
+    const { tenant_id: tenantId, id: userId, role } = req.user;
 
     try {
         const offset = (page - 1) * limit;
@@ -228,7 +266,13 @@ const getAllTasks = async (req, res) => {
             query += ` AND t.tenant_id = $${params.length}`;
         }
 
-        if (assignedTo) { params.push(assignedTo); query += ` AND t.assigned_to = $${params.length}`; }
+        // Enforce user isolation
+        if (role === 'user') {
+            params.push(userId);
+            query += ` AND t.assigned_to = $${params.length}`;
+        }
+
+        if (assignedTo && role !== 'user') { params.push(assignedTo); query += ` AND t.assigned_to = $${params.length}`; }
         if (status) { params.push(status); query += ` AND t.status = $${params.length}`; }
         if (priority) { params.push(priority); query += ` AND t.priority = $${params.length}`; }
         if (search) { params.push(`%${search}%`); query += ` AND t.title ILIKE $${params.length}`; }
@@ -247,7 +291,12 @@ const getAllTasks = async (req, res) => {
             countQuery += ` AND t.tenant_id = $${countParams.length}`;
         }
 
-        if (assignedTo) { countParams.push(assignedTo); countQuery += ` AND t.assigned_to = $${countParams.length}`; }
+        if (role === 'user') {
+            countParams.push(userId);
+            countQuery += ` AND t.assigned_to = $${countParams.length}`;
+        }
+
+        if (assignedTo && role !== 'user') { countParams.push(assignedTo); countQuery += ` AND t.assigned_to = $${countParams.length}`; }
         if (status) { countParams.push(status); countQuery += ` AND t.status = $${countParams.length}`; }
         if (priority) { countParams.push(priority); countQuery += ` AND t.priority = $${countParams.length}`; }
         if (search) { countParams.push(`%${search}%`); countQuery += ` AND t.title ILIKE $${countParams.length}`; }

@@ -26,24 +26,44 @@ const getDashboardStats = async (req, res) => {
     // ✅ Normal Logic for Tenants
     // ✅ MUST match JWT payload exactly
     const tenantId = req.user.tenant_id;
+    const { role, id: userId } = req.user;
 
     // DEBUG LOG (temporarily)
     console.log("Dashboard Stats for tenant:", tenantId);
 
+    // If user is a regular user, restrict stats to their own tasks
+    let userFilter = '';
+    const params = [tenantId];
+
+    if (role === 'user') {
+      params.push(userId);
+      userFilter = `AND t.assigned_to = $2`;
+    }
+
     const result = await pool.query(
       `
       SELECT
-        COUNT(p.id) AS "totalProjects",
+        COUNT(DISTINCT p.id) AS "totalProjects",
         COUNT(t.id) AS "totalTasks",
         COUNT(CASE WHEN t.status = 'completed' THEN 1 END) AS "completedTasks",
         COUNT(CASE WHEN t.status != 'completed' THEN 1 END) AS "pendingTasks"
       FROM tenants te
       LEFT JOIN projects p ON p.tenant_id = te.id
-      LEFT JOIN tasks t ON t.tenant_id = te.id
-      WHERE te.id = $1
+      LEFT JOIN tasks t ON t.tenant_id = te.id 
+      WHERE te.id = $1 ${userFilter}
       `,
-      [tenantId]
+      params
     );
+
+    // If regular user, totalProjects might count projects they have tasks in, 
+    // OR we can keep showing all tenant projects if that's the intended visibility.
+    // For now, the query above joins tasks, so count(DISTINCT p.id) will count projects that satisfy the task filter if strict.
+    // However, the LEFT JOIN structure might need adjustment if we want "All Projects" but "My Tasks".
+    // given the query: LEFT JOIN tasks t ... WHERE ... AND t.assigned_to = User. 
+    // This effectively filters rows where task is assigned to user. 
+    // "totalProjects" will count projects that have at least one task assigned to this user. 
+    // If a project has NO tasks for this user, it won't be counted in "totalProjects". 
+    // This seems correct for "My Dashboard" view.
 
     res.json({
       success: true,
