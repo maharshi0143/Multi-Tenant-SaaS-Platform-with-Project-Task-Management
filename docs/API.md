@@ -98,6 +98,22 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 { "success": true, "message": "Logged out successfully" }
 ```
 
+### 1.5 Forgot Password
+**POST** `/auth/forgot-password`
+**Auth**: None (Public)
+**Description**: Sends a password reset link to the user's email.
+
+**Request Body:**
+```json
+{ "email": "user@acme.com" }
+```
+
+**Success Response (200):**
+```json
+{ "success": true, "message": "Reset link sent to your registered email." }
+```
+
+
 ---
 
 ## 2. Tenant Management Module
@@ -130,10 +146,24 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 { "name": "Acme Corporation Global" }
 ```
 
-**Success Response (200):**
-```json
 { "success": true, "message": "Tenant updated successfully" }
 ```
+
+### 2.4 Upgrade Tenant Subscription
+**POST** `/tenants/upgrade`
+**Auth**: Bearer Token (Tenant Admin)
+**Description**: Upgrade the tenant's subscription plan.
+
+**Request Body:**
+```json
+{ "plan": "pro" }
+```
+
+**Success Response (200):**
+```json
+{ "success": true, "message": "Subscription upgraded successfully" }
+```
+
 
 ### 2.3 List All Tenants (Super Admin)
 **GET** `/tenants`  
@@ -246,7 +276,24 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 { "success": true, "data": { "projects": [ ... ] } }
 ```
 
-### 4.3 Update Project
+### 4.3 Get Project Details
+**GET** `/projects/:projectId`
+**Auth**: Bearer Token
+**Description**: Get detailed information about a specific project, including its tasks.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Website Redesign",
+    "tasks": [ ... ]
+  }
+}
+```
+
+### 4.4 Update Project
 **PUT** `/projects/:projectId`  
 **Auth**: Bearer Token (Creator or Tenant Admin)  
 **Description**: Update project details.
@@ -261,7 +308,7 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 { "success": true, "message": "Project updated successfully" }
 ```
 
-### 4.4 Delete Project
+### 4.5 Delete Project
 **DELETE** `/projects/:projectId`  
 **Auth**: Bearer Token (Creator or Tenant Admin)  
 **Description**: Delete a project and its tasks.
@@ -334,3 +381,94 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 ```json
 { "success": true, "message": "Task updated successfully" }
 ```
+
+
+### 5.5 Delete Task
+**DELETE** `/tasks/:taskId`
+**Auth**: Bearer Token
+**Description**: Permanently remove a task.
+
+**Success Response (200):**
+```json
+{ "success": true, "message": "Task deleted" }
+```
+
+### 5.6 List All Tasks
+**GET** `/tasks`
+**Auth**: Bearer Token
+**Description**: List all tasks for the tenant, with optional filters.
+
+**Query Params**: `assignedTo`, `status`, `priority`, `search`, `page`, `limit`
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "tasks": [ ... ],
+    "total": 50,
+    "pagination": { "page": 1, "totalPages": 5 }
+  }
+}
+```
+
+---
+
+## 6. Audit Logs Module
+
+### 6.1 Get Audit Logs
+**GET** `/audit`
+**Auth**: Bearer Token
+**Description**: View audit history for the tenant.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "action": "LOGIN",
+      "entity_type": "user",
+      "userName": "John Doe",
+      "created_at": "timestamp"
+    }
+  ]
+}
+```
+
+---
+
+## 7. Dashboard Module
+
+### 7.1 Get Dashboard Stats
+**GET** `/dashboard/stats`
+**Auth**: Bearer Token
+**Description**: Get high-level statistics for the dashboard. Response varies for Super Admin vs Tenant User.
+
+**Success Response (200) - Tenant User:**
+```json
+{
+  "success": true,
+  "data": {
+    "totalProjects": 5,
+    "totalTasks": 20,
+    "completedTasks": 15,
+    "pendingTasks": 5
+  }
+}
+```
+
+**Success Response (200) - Super Admin:**
+```json
+{
+  "success": true,
+  "data": {
+    "totalTenants": 10,
+    "totalProjects": 50,
+    "totalUsers": 100,
+    "totalTasks": 500
+  }
+}
+```
+
