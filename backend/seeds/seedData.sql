@@ -36,10 +36,7 @@ VALUES (
 ) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
 -- 4. SEED REGULAR USERS
-INSERT INTO users (id, tenant_id, email, password_hash, full_name, role, is_active) VALUES 
-(uuid_generate_v4(), '9b326198-a580-4deb-9530-50ac4ed43cf2', 'user1@demo.com', '$2b$10$78HuUEQ/VlKY5XreavW4qehdCwy0sld77f96Qa.e1Jc.e4olBDeX.', 'User One', 'user', true),
-(uuid_generate_v4(), '9b326198-a580-4deb-9530-50ac4ed43cf2', 'user2@demo.com', '$2b$10$78HuUEQ/VlKY5XreavW4qehdCwy0sld77f96Qa.e1Jc.e4olBDeX.', 'User Two', 'user', true)
-ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;
+
 
 -- 5. SEED PROJECTS
 INSERT INTO projects (id, tenant_id, name, description, status) VALUES
