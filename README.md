@@ -30,8 +30,8 @@ The system follows a 3-tier architecture with a central PostgreSQL database. Ten
 ### Quick Start
 1.  **Clone the repository**:
     ```bash
-    git clone <repository-url>
-    cd saas-platform
+    git clone github.com/maharshi0143/Multi-Tenant-SaaS-Platform-with-Project-Task-Management.git
+    cd Multi-Tenant-SaaS-Platform-with-Project-Task-Management
     ```
 2.  **Start the Application**:
     Run the following command in the root directory:
@@ -56,3 +56,6 @@ For testing, use the capabilities defined in `submission.json`:
 *   **Super Admin**: `superadmin@system.com` / `Admin@123`
 *   **Tenant Admin**: `admin@demo.com` / `Demo@123` (Tenant: `demo`)
 *   **User**: `user1@demo.com` / `User@123`
+
+## Demo Video
+[Watch the Project Demo](https://drive.google.com/file/d/1_DAgqJRgKvak69LVzO8HpkScm2mzGZ8C/view?usp=sharing)
