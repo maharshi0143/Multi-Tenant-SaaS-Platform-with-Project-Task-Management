@@ -26,7 +26,10 @@ export default function UserModal({ user, onClose, onSaved }) {
       }
       onSaved();
       onClose();
-    } catch (e) { alert('Failed to save user'); }
+    } catch (e) {
+      const msg = e.response?.data?.message || 'Failed to save user';
+      alert(msg);
+    }
     finally { setLoading(false); }
   }
 
