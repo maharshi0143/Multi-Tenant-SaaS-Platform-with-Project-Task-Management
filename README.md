@@ -58,4 +58,4 @@ For testing, use the capabilities defined in `submission.json`:
 *   **User**: `user1@demo.com` / `User@123`
 
 ## Demo Video
-[Watch the Project Demo](https://drive.google.com/file/d/1_DAgqJRgKvak69LVzO8HpkScm2mzGZ8C/view?usp=sharing)
+[Watch the Project Demo](https://drive.google.com/file/d/1Ex3ivVR6Rm08CDQzLtsY9fzR_5nczMxo/view?usp=sharing)
