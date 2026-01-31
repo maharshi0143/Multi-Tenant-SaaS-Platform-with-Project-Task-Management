@@ -1,4 +1,6 @@
 {
+  "backendUrl": "http://localhost:5000",
+  "frontendUrl": "http://localhost:3000",
   "testCredentials": {
     "superAdmin": {
       "email": "superadmin@system.com",

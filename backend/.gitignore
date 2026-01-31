@@ -1,0 +1,32 @@
+# Defaults
+node_modules
+.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.nvmrc
+
+# Docker
+.dockerignore
