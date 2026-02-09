@@ -48,14 +48,14 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 ### 1.2 User Login
 **POST** `/auth/login`  
 **Auth**: None (Public)  
-**Description**: Authenticate a user. Requires `tenantSubdomain` for regular users.
+**Description**: Authenticate a user. Requires `tenantSubdomain` (or `tenantId`) for non-super_admin users.
 
 **Request Body:**
 ```json
 {
   "email": "user@acme.com",
   "password": "UserPassword123",
-  "tenantSubdomain": "acme" 
+  "tenantSubdomain": "acme"
 }
 ```
 
@@ -83,7 +83,16 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
   "data": {
     "id": "uuid",
     "email": "user@acme.com",
-    "tenant": { "name": "Acme Corp", "subscriptionPlan": "pro" }
+    "role": "tenant_admin",
+    "isActive": true,
+    "tenant": {
+      "id": "uuid",
+      "name": "Acme Corp",
+      "subdomain": "acme",
+      "subscriptionPlan": "pro",
+      "maxUsers": 25,
+      "maxProjects": 15
+    }
   }
 }
 ```
@@ -97,22 +106,6 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 ```json
 { "success": true, "message": "Logged out successfully" }
 ```
-
-### 1.5 Forgot Password
-**POST** `/auth/forgot-password`
-**Auth**: None (Public)
-**Description**: Sends a password reset link to the user's email.
-
-**Request Body:**
-```json
-{ "email": "user@acme.com" }
-```
-
-**Success Response (200):**
-```json
-{ "success": true, "message": "Reset link sent to your registered email." }
-```
-
 
 ---
 
@@ -146,31 +139,17 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 { "name": "Acme Corporation Global" }
 ```
 
-{ "success": true, "message": "Tenant updated successfully" }
-```
-
-### 2.4 Upgrade Tenant Subscription
-**POST** `/tenants/upgrade`
-**Auth**: Bearer Token (Tenant Admin)
-**Description**: Upgrade the tenant's subscription plan.
-
-**Request Body:**
-```json
-{ "plan": "pro" }
-```
-
 **Success Response (200):**
 ```json
-{ "success": true, "message": "Subscription upgraded successfully" }
+{ "success": true, "message": "Tenant updated successfully" }
 ```
-
 
 ### 2.3 List All Tenants (Super Admin)
 **GET** `/tenants`  
 **Auth**: Bearer Token (Super Admin ONLY)  
 **Description**: List all registered tenants with pagination.
 
-**Query Params**: `page`, `limit`, `status`
+**Query Params**: `page`, `limit`, `status`, `subscriptionPlan`
 
 **Success Response (200):**
 ```json
@@ -178,7 +157,7 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
   "success": true,
   "data": {
     "tenants": [ ... ],
-    "pagination": { "currentPage": 1, "totalPages": 5 }
+    "pagination": { "currentPage": 1, "totalPages": 5, "totalTenants": 47, "limit": 10 }
   }
 }
 ```
@@ -216,14 +195,18 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 ```json
 {
   "success": true,
-  "data": { "users": [ ... ], "total": 15 }
+  "data": {
+    "users": [ ... ],
+    "total": 15,
+    "pagination": { "currentPage": 1, "totalPages": 1, "limit": 50 }
+  }
 }
 ```
 
 ### 3.3 Update User
 **PUT** `/users/:userId`  
-**Auth**: Bearer Token (Tenant Admin)  
-**Description**: Update user details.
+**Auth**: Bearer Token (Tenant Admin or Self)  
+**Description**: Update user details. Tenant Admin can update role/isActive, users can update their own fullName.
 
 **Request Body:**
 ```json
@@ -238,11 +221,11 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 ### 3.4 Delete User
 **DELETE** `/users/:userId`  
 **Auth**: Bearer Token (Tenant Admin)  
-**Description**: Remove a user from the tenant.
+**Description**: Remove a user from the tenant. Tenant Admin cannot delete themselves.
 
 **Success Response (200):**
 ```json
-{ "success": true, "message": "User account has been removed" }
+{ "success": true, "message": "User deleted successfully" }
 ```
 
 ---
@@ -261,7 +244,7 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 
 **Success Response (201):**
 ```json
-{ "success": true, "data": { "id": "uuid", "name": "Website Redesign" } }
+{ "success": true, "data": { "id": "uuid", "name": "Website Redesign", "tenantId": "uuid" } }
 ```
 
 ### 4.2 List Projects
@@ -273,27 +256,10 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 
 **Success Response (200):**
 ```json
-{ "success": true, "data": { "projects": [ ... ] } }
+{ "success": true, "data": { "projects": [ ... ], "pagination": { "currentPage": 1, "totalPages": 1, "limit": 20 } } }
 ```
 
-### 4.3 Get Project Details
-**GET** `/projects/:projectId`
-**Auth**: Bearer Token
-**Description**: Get detailed information about a specific project, including its tasks.
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "uuid",
-    "name": "Website Redesign",
-    "tasks": [ ... ]
-  }
-}
-```
-
-### 4.4 Update Project
+### 4.3 Update Project
 **PUT** `/projects/:projectId`  
 **Auth**: Bearer Token (Creator or Tenant Admin)  
 **Description**: Update project details.
@@ -308,7 +274,7 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 { "success": true, "message": "Project updated successfully" }
 ```
 
-### 4.5 Delete Project
+### 4.4 Delete Project
 **DELETE** `/projects/:projectId`  
 **Auth**: Bearer Token (Creator or Tenant Admin)  
 **Description**: Delete a project and its tasks.
@@ -349,7 +315,7 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 
 **Success Response (200):**
 ```json
-{ "success": true, "data": { "tasks": [ ... ] } }
+{ "success": true, "data": { "tasks": [ ... ], "pagination": { "currentPage": 1, "totalPages": 1, "limit": 50 } } }
 ```
 
 ### 5.3 Update Task Status
@@ -382,6 +348,40 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
 { "success": true, "message": "Task updated successfully" }
 ```
 
+---
+
+## Optional / Additional Endpoints
+
+### A.1 Project Details
+**GET** `/projects/:projectId`
+**Auth**: Bearer Token
+**Description**: Get details for a single project (includes tasks).
+
+### A.2 Forgot Password
+**POST** `/auth/forgot-password`
+**Auth**: None (Public)
+**Description**: Sends a password reset link to the user's email.
+
+**Request Body:**
+```json
+{ "email": "user@acme.com" }
+```
+
+**Success Response (200):**
+```json
+{ "success": true, "message": "Reset link sent to your registered email." }
+```
+
+### A.3 Delete Task
+**DELETE** `/tasks/:taskId`
+**Auth**: Bearer Token (Tenant Admin or Super Admin)
+**Description**: Remove a task from the system.
+
+### A.4 Tenant Task Feed
+**GET** `/tasks`
+**Auth**: Bearer Token
+**Description**: List tasks across a tenant (supports filters and pagination).
+
 
 ### 5.5 Delete Task
 **DELETE** `/tasks/:taskId`
@@ -407,7 +407,7 @@ This document outlines the API endpoints for the **SaaS Platform**. All API resp
   "data": {
     "tasks": [ ... ],
     "total": 50,
-    "pagination": { "page": 1, "totalPages": 5 }
+    "pagination": { "currentPage": 1, "totalPages": 5, "limit": 50 }
   }
 }
 ```

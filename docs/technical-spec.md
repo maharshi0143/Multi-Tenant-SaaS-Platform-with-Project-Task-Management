@@ -10,7 +10,7 @@ The application follows a modular structure to ensure maintainability and a clea
 * `submission.json`: Credentials file for automated evaluation.
 
 ### 📁 Backend Service (`/backend`)
-* `migrations/`: JavaScript runners that execute `init.sql` to build the schema.
+* `migrations/`: Ordered SQL migrations (001_*, 002_*, etc.) executed by the migration runner.
 * `seeds/`: JavaScript runners that execute `seedData.sql` to populate mandatory accounts.
 * `src/config/`: Database connection pool and environment configuration.
 * `src/controllers/`: Business logic for the 19 API endpoints.
