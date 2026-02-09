@@ -8,7 +8,7 @@ const getTenantDetails = async (req, res) => {
     const { tenantId } = req.params;
     try {
         // Access Check: User must belong to this tenant OR be super_admin
-        if (req.user.tenant_id !== tenantId && req.user.role !== 'super_admin') {
+        if (req.user.tenantId !== tenantId && req.user.role !== 'super_admin') {
             return res.status(403).json({ success: false, message: "Unauthorized access" });
         }
 
@@ -57,7 +57,7 @@ const updateTenantProfile = async (req, res) => {
     const isSuperAdmin = req.user.role === 'super_admin';
 
     try {
-        if (req.user.tenant_id !== tenantId && !isSuperAdmin) {
+        if (req.user.tenantId !== tenantId && !isSuperAdmin) {
             return res.status(403).json({ success: false, message: "Unauthorized access" });
         }
 
@@ -90,7 +90,7 @@ const updateTenantProfile = async (req, res) => {
         await pool.query(
             `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id) 
              VALUES ($1, $2, 'UPDATE_TENANT', 'tenant', $1)`,
-            [tenantId, req.user.id]
+            [tenantId, req.user.userId]
         );
 
         res.json({ success: true, message: "Tenant updated successfully", data: result.rows[0] });
@@ -109,24 +109,50 @@ const getAllTenants = async (req, res) => {
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const { status, subscriptionPlan } = req.query;
     const offset = (page - 1) * limit;
 
     try {
         // Requirement: Calculate totalUsers and totalProjects for each tenant
-        const result = await pool.query(`
+        let query = `
             SELECT id, name, subdomain, status, subscription_plan as "subscriptionPlan", created_at as "createdAt",
             (SELECT COUNT(*) FROM users WHERE tenant_id = t.id) as "totalUsers",
             (SELECT COUNT(*) FROM projects WHERE tenant_id = t.id) as "totalProjects"
-            FROM tenants t 
-            ORDER BY created_at DESC LIMIT $1 OFFSET $2`, [limit, offset]);
+            FROM tenants t WHERE 1=1`;
+        const params = [];
 
-        const countRes = await pool.query('SELECT COUNT(*) FROM tenants');
+        if (status) {
+            params.push(status);
+            query += ` AND t.status = $${params.length}`;
+        }
+        if (subscriptionPlan) {
+            params.push(subscriptionPlan);
+            query += ` AND t.subscription_plan = $${params.length}`;
+        }
+
+        params.push(limit, offset);
+        query += ` ORDER BY created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+        const result = await pool.query(query, params);
+
+        let countQuery = 'SELECT COUNT(*) FROM tenants t WHERE 1=1';
+        const countParams = [];
+        if (status) { countParams.push(status); countQuery += ` AND t.status = $${countParams.length}`; }
+        if (subscriptionPlan) { countParams.push(subscriptionPlan); countQuery += ` AND t.subscription_plan = $${countParams.length}`; }
+
+        const countRes = await pool.query(countQuery, countParams);
         const totalTenants = parseInt(countRes.rows[0].count);
+
+        const tenants = result.rows.map((t) => ({
+            ...t,
+            totalUsers: parseInt(t.totalUsers, 10),
+            totalProjects: parseInt(t.totalProjects, 10)
+        }));
 
         res.json({
             success: true,
             data: {
-                tenants: result.rows,
+                tenants,
                 pagination: {
                     currentPage: page,
                     totalPages: Math.ceil(totalTenants / limit),
@@ -140,4 +166,4 @@ const getAllTenants = async (req, res) => {
     }
 };
 
-module.exports = { upgradeTenant: () => { }, updateTenantProfile, getAllTenants, getTenantDetails };
+module.exports = { updateTenantProfile, getAllTenants, getTenantDetails };

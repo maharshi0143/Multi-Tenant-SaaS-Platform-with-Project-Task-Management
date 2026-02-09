@@ -5,14 +5,28 @@ const path = require('path');
 const runMigrations = async () => {
     console.log("🚀 Starting Database Migrations...");
     try {
-        // Points to /usr/src/app/database/migrations/init.sql in Docker
-        const sqlPath = path.join(__dirname, 'init.sql');
-        const sql = fs.readFileSync(sqlPath, 'utf8');
+        const files = fs
+            .readdirSync(__dirname)
+            .filter((file) => file.endsWith('.sql'))
+            .sort();
 
-        await pool.query(sql);
+        for (const file of files) {
+            const sqlPath = path.join(__dirname, file);
+            const raw = fs.readFileSync(sqlPath, 'utf8');
+
+            const upStart = raw.indexOf('-- UP');
+            const downStart = raw.indexOf('-- DOWN');
+            const sql = upStart !== -1
+                ? raw.slice(upStart + 5, downStart !== -1 ? downStart : raw.length)
+                : raw;
+
+            if (sql.trim()) {
+                await pool.query(sql);
+            }
+        }
+
         console.log("✅ Migrations completed successfully!");
     } catch (err) {
-        // Ignore errors if the relation or type already exists to allow restarts
         if (err.message.includes('already exists')) {
             console.log("ℹ️ Database structure already exists. Skipping...");
         } else {

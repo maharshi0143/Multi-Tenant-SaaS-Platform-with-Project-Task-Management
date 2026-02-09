@@ -1,12 +1,12 @@
 module.exports = function tenantAccess(req, res, next) {
   const { tenantId } = req.params;
-  const { tenant_id, role } = req.user;
+  const { tenantId: userTenantId, role } = req.user;
 
   // Super admin can access all tenants
   if (role === 'super_admin') return next();
 
-  // Tenant admin can access only their tenant
-  if (role === 'tenant_admin' && tenant_id === tenantId) {
+  // Tenant members can access only their tenant
+  if (userTenantId === tenantId) {
     return next();
   }
 

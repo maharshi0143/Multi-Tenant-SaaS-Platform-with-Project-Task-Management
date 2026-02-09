@@ -11,16 +11,18 @@ const projectRoutes = require('./routes/projectRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const userRoutes = require('./routes/userRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const auditRoutes = require('./routes/auditRoutes');
 
 const app = express();
 
 // 1. Mandatory CORS Configuration
 // Allows requests from your frontend Docker service or local dev
 const allowedOrigins = [
+  process.env.FRONTEND_URL,
   "http://localhost:3000",
   "http://localhost:5173",
   "http://frontend:3000"
-];
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -68,6 +70,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/audit', auditRoutes);
 
 // 5. Global Error Handler
 app.use((err, req, res, next) => {

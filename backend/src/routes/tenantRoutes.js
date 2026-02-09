@@ -3,9 +3,8 @@ const router = express.Router();
 
 const { 
   getTenantDetails, 
-  updateTenantProfile, 
-  getAllTenants, 
-  upgradeTenant 
+  updateTenantProfile,
+  getAllTenants
 } = require('../controllers/tenantController');
 
 const { createUser, getUsers } = require('../controllers/userController');
@@ -23,9 +22,6 @@ router.get('/:tenantId', tenantAccess, getTenantDetails);
 
 // API 6: Update Tenant Profile
 router.put('/:tenantId', tenantAccess, updateTenantProfile);
-
-// API 11/6: Upgrade Subscription
-router.post('/upgrade', upgradeTenant);
 
 // API 8: Add User to Tenant
 router.post('/:tenantId/users', tenantAccess, createUser);

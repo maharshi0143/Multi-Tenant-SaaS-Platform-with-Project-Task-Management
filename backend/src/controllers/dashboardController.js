@@ -25,8 +25,8 @@ const getDashboardStats = async (req, res) => {
 
     // ✅ Normal Logic for Tenants
     // ✅ MUST match JWT payload exactly
-    const tenantId = req.user.tenant_id;
-    const { role, id: userId } = req.user;
+    const tenantId = req.user.tenantId;
+    const { role, userId } = req.user;
 
     // DEBUG LOG (temporarily)
     console.log("Dashboard Stats for tenant:", tenantId);

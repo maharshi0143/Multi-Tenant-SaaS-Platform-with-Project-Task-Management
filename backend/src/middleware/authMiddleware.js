@@ -11,7 +11,12 @@ const authenticate = (req, res, next) => {
   try {
     // Verifies the token using your 32-character secret
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Contains { id, tenant_id, role }
+    // Normalize payload keys to required spec
+    req.user = {
+      userId: decoded.userId || decoded.id,
+      tenantId: decoded.tenantId ?? decoded.tenant_id ?? null,
+      role: decoded.role
+    };
     next();
   } catch (err) {
     res.status(401).json({ success: false, message: "Invalid or expired token." });

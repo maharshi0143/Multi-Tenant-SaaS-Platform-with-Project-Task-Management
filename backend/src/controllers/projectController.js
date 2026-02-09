@@ -5,11 +5,10 @@ const { pool } = require('../config/db');
  * Enforces multi-tenant isolation and subscription limits
  */
 const createProject = async (req, res) => {
-    const { name, description } = req.body;
+    const { name, description, status } = req.body;
 
-    // FIX: Match JWT payload keys (tenant_id and id)
-    const tenantId = req.user.tenant_id;
-    const userId = req.user.id;
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId;
 
     if (!name) {
         return res.status(400).json({ success: false, message: "Project name is required" });
@@ -51,9 +50,10 @@ const createProject = async (req, res) => {
 
         // 4. Create project
         const newProject = await client.query(
-            `INSERT INTO projects (tenant_id, name, description, status) 
-             VALUES ($1, $2, $3, 'active') RETURNING id, name, description, status, created_at as "createdAt"`,
-            [tenantId, name, description]
+            `INSERT INTO projects (tenant_id, name, description, status, created_by) 
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, name, description, status, created_by as "createdBy", created_at as "createdAt"`,
+            [tenantId, name, description, status || 'active', userId]
         );
 
         // 5. Audit Log (Mandatory)
@@ -64,7 +64,13 @@ const createProject = async (req, res) => {
         );
 
         await client.query('COMMIT');
-        res.status(201).json({ success: true, data: newProject.rows[0] });
+        res.status(201).json({
+            success: true,
+            data: {
+                ...newProject.rows[0],
+                tenantId
+            }
+        });
 
     } catch (error) {
         await client.query('ROLLBACK');
@@ -80,17 +86,17 @@ const createProject = async (req, res) => {
  */
 const getProjects = async (req, res) => {
     try {
-        const { tenant_id: tenantId, role } = req.user;
+        const { tenantId, role } = req.user;
         const { status, search } = req.query;
 
         // Build dynamic query with optional filters
         let baseQuery = `
-            SELECT p.id, p.name, p.description, p.status, p.created_at as "createdAt", t.name as "tenantName",
-                   json_build_object('id', u.id, 'fullName', u.full_name, 'email', u.email) as "createdBy",
-                   (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as task_count
+                 SELECT p.id, p.name, p.description, p.status, p.created_at as "createdAt",
+                     json_build_object('id', u.id, 'fullName', u.full_name, 'email', u.email) as "createdBy",
+                     (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as "taskCount",
+                     (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.status = 'completed') as "completedTaskCount"
             FROM projects p
             LEFT JOIN users u ON p.created_by = u.id
-            LEFT JOIN tenants t ON p.tenant_id = t.id
             WHERE 1=1`;
 
         const params = [];
@@ -121,7 +127,11 @@ const getProjects = async (req, res) => {
 
         const projects = await pool.query(baseQuery, params);
         // normalize task_count to integer
-        const rows = projects.rows.map((r) => ({ ...r, task_count: parseInt(r.task_count, 10), completed_task_count: parseInt(r.completed_task_count || 0, 10) }));
+        const rows = projects.rows.map((r) => ({
+            ...r,
+            taskCount: parseInt(r.taskCount, 10),
+            completedTaskCount: parseInt(r.completedTaskCount || 0, 10)
+        }));
 
         // total count for pagination (apply same filters)
         let countQuery = `SELECT COUNT(*) FROM projects p WHERE 1=1`;
@@ -137,7 +147,18 @@ const getProjects = async (req, res) => {
         const countRes = await pool.query(countQuery, countParams);
         const total = parseInt(countRes.rows[0].count, 10);
 
-        res.json({ success: true, data: { projects: rows, total, pagination: { page, limit, totalPages: Math.ceil(total / limit) } } });
+        res.json({
+            success: true,
+            data: {
+                projects: rows,
+                total,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(total / limit),
+                    limit
+                }
+            }
+        });
     } catch (error) {
         console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
@@ -149,13 +170,14 @@ const getProjects = async (req, res) => {
 const getProjectById = async (req, res) => {
     const { id } = req.params;
     try {
+        const isSuperAdmin = req.user.role === 'super_admin';
         const projectRes = await pool.query(
-            `SELECT p.id, p.name, p.description, p.status, p.created_at as "createdAt",
+            `SELECT p.id, p.name, p.description, p.status, p.tenant_id as "tenantId", p.created_at as "createdAt",
                     json_build_object('id', u.id, 'fullName', u.full_name, 'email', u.email) as "createdBy"
              FROM projects p
              LEFT JOIN users u ON p.created_by = u.id
-             WHERE p.id = $1 AND p.tenant_id = $2`,
-            [id, req.user.tenant_id]
+             WHERE p.id = $1 ${isSuperAdmin ? '' : 'AND p.tenant_id = $2'}`,
+            isSuperAdmin ? [id] : [id, req.user.tenantId]
         );
 
         if (projectRes.rows.length === 0) {
@@ -172,7 +194,7 @@ const getProjectById = async (req, res) => {
              LEFT JOIN users u ON t.assigned_to = u.id
              WHERE t.project_id = $1 AND t.tenant_id = $2
              ORDER BY CASE t.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, t.due_date ASC`,
-            [id, req.user.tenant_id]
+            [id, project.tenantId]
         );
 
         project.tasks = tasksRes.rows;
@@ -191,19 +213,37 @@ const updateProject = async (req, res) => {
     const { id } = req.params;
     const { name, description, status } = req.body;
     try {
+        // Authorization: tenant_admin or project creator
+        const isSuperAdmin = req.user.role === 'super_admin';
+        const projectRes = await pool.query(
+            `SELECT created_by, tenant_id FROM projects WHERE id = $1 ${isSuperAdmin ? '' : 'AND tenant_id = $2'}`,
+            isSuperAdmin ? [id] : [id, req.user.tenantId]
+        );
+        if (projectRes.rows.length === 0) return res.status(404).json({ success: false, message: "Project not found" });
+
+        const isCreator = projectRes.rows[0].created_by === req.user.userId;
+        if (!isSuperAdmin && req.user.role !== 'tenant_admin' && !isCreator) {
+            return res.status(403).json({ success: false, message: "Not authorized" });
+        }
+
         const result = await pool.query(
             `UPDATE projects 
              SET name = COALESCE($1, name), 
                  description = COALESCE($2, description), 
                  status = COALESCE($3, status),
                  updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $4 AND tenant_id = $5 
+             WHERE id = $4 ${isSuperAdmin ? '' : 'AND tenant_id = $5'} 
              RETURNING id, name, description, status, updated_at as "updatedAt"`,
-            [name, description, status, id, req.user.tenant_id]
+            isSuperAdmin ? [name, description, status, id] : [name, description, status, id, req.user.tenantId]
         );
 
-        if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Project not found" });
-        res.json({ success: true, data: result.rows[0] });
+        await pool.query(
+            `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id)
+             VALUES ($1, $2, 'UPDATE_PROJECT', 'project', $3)`,
+            [projectRes.rows[0].tenant_id || req.user.tenantId, req.user.userId, id]
+        );
+
+        res.json({ success: true, message: "Project updated successfully", data: result.rows[0] });
     } catch (error) {
         console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
@@ -216,11 +256,30 @@ const updateProject = async (req, res) => {
 const deleteProject = async (req, res) => {
     const { id } = req.params;
     try {
+        const isSuperAdmin = req.user.role === 'super_admin';
+        const projectRes = await pool.query(
+            `SELECT created_by, tenant_id FROM projects WHERE id = $1 ${isSuperAdmin ? '' : 'AND tenant_id = $2'}`,
+            isSuperAdmin ? [id] : [id, req.user.tenantId]
+        );
+        if (projectRes.rows.length === 0) return res.status(404).json({ success: false, message: "Project not found" });
+
+        const isCreator = projectRes.rows[0].created_by === req.user.userId;
+        if (!isSuperAdmin && req.user.role !== 'tenant_admin' && !isCreator) {
+            return res.status(403).json({ success: false, message: "Not authorized" });
+        }
+
         const result = await pool.query(
-            'DELETE FROM projects WHERE id = $1 AND tenant_id = $2 RETURNING id',
-            [id, req.user.tenant_id]
+            `DELETE FROM projects WHERE id = $1 ${isSuperAdmin ? '' : 'AND tenant_id = $2'} RETURNING id`,
+            isSuperAdmin ? [id] : [id, req.user.tenantId]
         );
         if (result.rows.length === 0) return res.status(404).json({ success: false, message: "Project not found" });
+
+        await pool.query(
+            `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id)
+             VALUES ($1, $2, 'DELETE_PROJECT', 'project', $3)`,
+            [projectRes.rows[0].tenant_id || req.user.tenantId, req.user.userId, id]
+        );
+
         res.json({ success: true, message: "Project and all associated tasks deleted successfully" });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

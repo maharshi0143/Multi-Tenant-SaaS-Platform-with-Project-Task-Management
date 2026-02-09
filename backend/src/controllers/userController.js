@@ -9,11 +9,15 @@ const createUser = async (req, res) => {
     const { email, password, fullName, role } = req.body;
 
     // Extracting from JWT payload (ensure these keys match authController signing)
-    const tenantId = req.user.tenant_id;
-    const adminId = req.user.id;
+    const tenantId = req.params.tenantId || req.user.tenantId;
+    const adminId = req.user.userId;
 
     if (!email || !password || !fullName) {
         return res.status(400).json({ success: false, message: "Email, password, and fullName are required." });
+    }
+
+    if (role && !['user', 'tenant_admin'].includes(role)) {
+        return res.status(400).json({ success: false, message: "Invalid role" });
     }
 
     const client = await pool.connect();
@@ -57,7 +61,7 @@ const createUser = async (req, res) => {
         );
 
         await client.query('COMMIT');
-        res.status(201).json({ success: true, data: newUser.rows[0] });
+        res.status(201).json({ success: true, message: "User created successfully", data: newUser.rows[0] });
 
     } catch (error) {
         await client.query('ROLLBACK');
@@ -76,11 +80,11 @@ const createUser = async (req, res) => {
  */
 const getUsers = async (req, res) => {
     const { search, role } = req.query;
-    const tenantId = req.user.tenant_id; // Multi-tenant isolation
+    const tenantId = req.params.tenantId || req.user.tenantId; // Multi-tenant isolation
 
     try {
         let query = `SELECT id, email, full_name as "fullName", role, is_active as "isActive", created_at as "createdAt"
-                     FROM users WHERE tenant_id = $1`;
+                 FROM users WHERE tenant_id = $1`;
         const params = [tenantId];
 
         if (search) {
@@ -95,8 +99,39 @@ const getUsers = async (req, res) => {
 
         query += ` ORDER BY created_at DESC`;
 
+        const page = parseInt(req.query.page || '1', 10);
+        const limit = Math.min(parseInt(req.query.limit || '50', 10), 100);
+        const offset = (page - 1) * limit;
+        query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(limit, offset);
+
         const result = await pool.query(query, params);
-        res.json({ success: true, data: { users: result.rows, count: result.rows.length } });
+
+        let countQuery = `SELECT COUNT(*) FROM users WHERE tenant_id = $1`;
+        const countParams = [tenantId];
+        if (search) {
+            countParams.push(`%${search}%`);
+            countQuery += ` AND (full_name ILIKE $${countParams.length} OR email ILIKE $${countParams.length})`;
+        }
+        if (role) {
+            countParams.push(role);
+            countQuery += ` AND role = $${countParams.length}`;
+        }
+        const countRes = await pool.query(countQuery, countParams);
+        const total = parseInt(countRes.rows[0].count, 10);
+
+        res.json({
+            success: true,
+            data: {
+                users: result.rows,
+                total,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(total / limit),
+                    limit
+                }
+            }
+        });
     } catch (error) {
         console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
@@ -109,7 +144,7 @@ const getUsers = async (req, res) => {
 const updateUser = async (req, res) => {
     const { userId } = req.params;
     const { fullName, role, isActive } = req.body;
-    const { tenant_id: tenantId, id: requesterId, role: requesterRole } = req.user;
+    const { tenantId, userId: requesterId, role: requesterRole } = req.user;
 
     try {
         const isAdmin = requesterRole === 'tenant_admin' || requesterRole === 'super_admin';
@@ -126,16 +161,32 @@ const updateUser = async (req, res) => {
 
         // Only admins can change roles or activation status
         if (isAdmin) {
-            if (role) { params.push(role); updates.push(`role = $${params.length}`); }
+            if (role) {
+                if (!['user', 'tenant_admin', 'super_admin'].includes(role)) {
+                    return res.status(400).json({ success: false, message: "Invalid role" });
+                }
+                if (requesterRole !== 'super_admin' && role === 'super_admin') {
+                    return res.status(403).json({ success: false, message: "Only super admins can assign super_admin role" });
+                }
+                params.push(role); updates.push(`role = $${params.length}`);
+            }
             if (isActive !== undefined) { params.push(isActive); updates.push(`is_active = $${params.length}`); }
         }
 
-        if (updates.length === 0) return res.status(400).json({ message: "No valid fields provided for update." });
+        if (updates.length === 0) {
+            return res.status(400).json({ success: false, message: "No valid fields provided for update." });
+        }
 
-        params.push(userId, tenantId);
-        const query = `UPDATE users SET ${updates.join(', ')} 
-                       WHERE id = $${params.length - 1} AND tenant_id = $${params.length} 
-                       RETURNING id, email, full_name as "fullName", role, is_active as "isActive", tenant_id`;
+        const isSuperAdmin = requesterRole === 'super_admin';
+        params.push(userId);
+        let query = `UPDATE users SET ${updates.join(', ')} WHERE id = $${params.length}`;
+
+        if (!isSuperAdmin) {
+            params.push(tenantId);
+            query += ` AND tenant_id = $${params.length}`;
+        }
+
+        query += ` RETURNING id, email, full_name as "fullName", role, is_active as "isActive", tenant_id`;
 
         const result = await pool.query(query, params);
         if (result.rows.length === 0) return res.status(404).json({ success: false, message: "User not found." });
@@ -148,7 +199,13 @@ const updateUser = async (req, res) => {
             await pool.query('UPDATE tenants SET status = $1 WHERE id = $2', [newTenantStatus, updatedUser.tenant_id]);
         }
 
-        res.json({ success: true, data: updatedUser });
+        await pool.query(
+            `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id)
+             VALUES ($1, $2, 'UPDATE_USER', 'user', $3)`,
+            [updatedUser.tenant_id || tenantId, requesterId, userId]
+        );
+
+        res.json({ success: true, message: "User updated successfully", data: updatedUser });
     } catch (error) {
         console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
@@ -160,9 +217,13 @@ const updateUser = async (req, res) => {
  */
 const deleteUser = async (req, res) => {
     const { userId } = req.params;
-    const { tenant_id: tenantId, id: requesterId } = req.user;
+    const { tenantId, userId: requesterId, role: requesterRole } = req.user;
 
     try {
+        if (requesterRole !== 'tenant_admin' && requesterRole !== 'super_admin') {
+            return res.status(403).json({ success: false, message: "Forbidden: Admin access required." });
+        }
+
         if (userId === requesterId) {
             return res.status(403).json({ success: false, message: "Security error: You cannot delete your own account." });
         }
@@ -170,10 +231,10 @@ const deleteUser = async (req, res) => {
         // Allow Super Admin to delete any user; Tenant Admin can only delete users in their tenant
         let query, params;
         if (req.user.role === 'super_admin') {
-            query = 'DELETE FROM users WHERE id = $1 RETURNING id';
+            query = 'DELETE FROM users WHERE id = $1 RETURNING id, tenant_id';
             params = [userId];
         } else {
-            query = 'DELETE FROM users WHERE id = $1 AND tenant_id = $2 RETURNING id';
+            query = 'DELETE FROM users WHERE id = $1 AND tenant_id = $2 RETURNING id, tenant_id';
             params = [userId, tenantId];
         }
 
@@ -183,7 +244,13 @@ const deleteUser = async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found or belongs to another tenant." });
         }
 
-        res.json({ success: true, message: "User account has been removed." });
+        await pool.query(
+            `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id)
+             VALUES ($1, $2, 'DELETE_USER', 'user', $3)`,
+            [result.rows[0].tenant_id || tenantId, requesterId, userId]
+        );
+
+        res.json({ success: true, message: "User deleted successfully" });
     } catch (error) {
         // Fallback: If FK error persists, try manual cleanup
         if (error.code === '23503') {

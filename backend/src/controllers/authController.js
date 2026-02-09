@@ -10,6 +10,20 @@ const registerTenant = async (req, res) => {
         return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
+    if (adminPassword.length < 8) {
+        return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(adminEmail)) {
+        return res.status(400).json({ success: false, message: "Invalid email format" });
+    }
+
+    const subdomainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+    if (!subdomainRegex.test(subdomain.toLowerCase())) {
+        return res.status(400).json({ success: false, message: "Invalid subdomain format" });
+    }
+
     const client = await pool.connect();
 
     try {
@@ -34,7 +48,7 @@ const registerTenant = async (req, res) => {
             `INSERT INTO users (tenant_id, email, password_hash, full_name, role) 
              VALUES ($1, $2, $3, $4, 'tenant_admin') 
              RETURNING id, email, full_name, role`,
-            [tenantId, adminEmail, hashedPassword, adminFullName]
+            [tenantId, adminEmail.toLowerCase().trim(), hashedPassword, adminFullName]
         );
 
         // 4. Create Audit Log
@@ -52,7 +66,12 @@ const registerTenant = async (req, res) => {
             data: {
                 tenantId: tenantResult.rows[0].id,
                 subdomain: tenantResult.rows[0].subdomain,
-                adminUser: userResult.rows[0]
+                adminUser: {
+                    id: userResult.rows[0].id,
+                    email: userResult.rows[0].email,
+                    fullName: userResult.rows[0].full_name,
+                    role: userResult.rows[0].role
+                }
             }
         });
     } catch (error) {
@@ -68,17 +87,18 @@ const registerTenant = async (req, res) => {
 
 // API 2: User Login
 const login = async (req, res) => {
-    const { email, password, tenantSubdomain } = req.body;
+    const { email, password, tenantSubdomain, tenantId } = req.body;
+    const normalizedEmail = email ? email.toLowerCase().trim() : email;
 
     try {
         let user;
 
         // If tenantSubdomain is provided, authenticate within that tenant.
         // If omitted, allow authentication for system-level users (e.g. `super_admin`) who have no tenant association.
-        if (!tenantSubdomain) {
+        if (!tenantSubdomain && !tenantId) {
             const userQuery = await pool.query(
                 'SELECT * FROM users WHERE email = $1 AND role = $2',
-                [email, 'super_admin']
+                [normalizedEmail, 'super_admin']
             );
             if (userQuery.rows.length === 0) {
                 return res.status(401).json({ success: false, message: "Invalid credentials" });
@@ -87,8 +107,10 @@ const login = async (req, res) => {
         } else {
             // 1. Verify the Tenant exists and is active
             const tenantQuery = await pool.query(
-                'SELECT id, status FROM tenants WHERE subdomain = $1',
-                [tenantSubdomain]
+                tenantSubdomain
+                    ? 'SELECT id, status FROM tenants WHERE subdomain = $1'
+                    : 'SELECT id, status FROM tenants WHERE id = $1',
+                [tenantSubdomain || tenantId]
             );
 
             if (tenantQuery.rows.length === 0) {
@@ -103,7 +125,7 @@ const login = async (req, res) => {
             // 2. Find User within this specific Tenant
             const userQuery = await pool.query(
                 'SELECT * FROM users WHERE email = $1 AND tenant_id = $2',
-                [email, tenant.id]
+                [normalizedEmail, tenant.id]
             );
 
             if (userQuery.rows.length === 0) {
@@ -113,17 +135,26 @@ const login = async (req, res) => {
             user = userQuery.rows[0];
         }
 
-        // 3. Verify Password
+        // 3. Verify Account Status
+        if (user.is_active === false) {
+            return res.status(403).json({ success: false, message: "Account is inactive" });
+        }
+
+        // 4. Verify Password
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        // 4. Generate JWT using your User-Defined Secret Key
+        if (user.is_active === false) {
+            return res.status(403).json({ success: false, message: "Account is inactive" });
+        }
+
+        // 5. Generate JWT using your User-Defined Secret Key
         const token = jwt.sign(
-            { id: user.id, tenant_id: user.tenant_id, role: user.role }, // Updated payload keys
-            process.env.JWT_SECRET, // Key from your .env
-            { expiresIn: '24h' }    // Mandatory 24-hour expiry
+            { userId: user.id, tenantId: user.tenant_id || null, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
         );
 
         // Mandatory: Log the login action in audit_logs
@@ -163,14 +194,34 @@ const getMe = async (req, res) => {
              FROM users u
              LEFT JOIN tenants t ON u.tenant_id = t.id
              WHERE u.id = $1`,
-            [req.user.id]
+            [req.user.userId]
         );
 
         if (userQuery.rows.length === 0) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
-        res.json({ success: true, data: userQuery.rows[0] });
+        const row = userQuery.rows[0];
+        res.json({
+            success: true,
+            data: {
+                id: row.id,
+                email: row.email,
+                fullName: row.fullName,
+                role: row.role,
+                isActive: row.isActive,
+                tenant: row.tenantId
+                    ? {
+                        id: row.tenantId,
+                        name: row.tenantName,
+                        subdomain: row.subdomain,
+                        subscriptionPlan: row.subscriptionPlan,
+                        maxUsers: row.maxUsers,
+                        maxProjects: row.maxProjects
+                    }
+                    : null
+            }
+        });
     } catch (error) {
         console.error(error); res.status(500).json({ success: false, message: "Internal server error" });
     }
@@ -190,14 +241,14 @@ const forgotPassword = async (req, res) => {
 
 // API 4: Logout
 const logout = async (req, res) => {
-    const { tenant_id, id } = req.user; // Updated keys to match payload
+    const { tenantId, userId } = req.user;
 
     try {
         // Updated: Safely handle NULL tenant_id for super_admin logout
         await pool.query(
             `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id) 
              VALUES ($1, $2, 'LOGOUT', 'user', $2)`,
-            [tenant_id || null, id]
+            [tenantId || null, userId]
         );
 
         res.json({ success: true, message: "Logged out successfully" });

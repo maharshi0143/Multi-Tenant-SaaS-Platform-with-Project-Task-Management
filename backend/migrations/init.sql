@@ -26,7 +26,7 @@
     CREATE TABLE users (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE, -- Requirement: CASCADE
-        email VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255) NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         full_name VARCHAR(255) NOT NULL,
         role user_role NOT NULL, -- Requirement: Use ENUM
@@ -35,6 +35,7 @@
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(tenant_id, email) -- Requirement: Unique per tenant
     );
+    CREATE INDEX idx_users_tenant_id ON users(tenant_id);
 
     -- 4. PROJECTS TABLE
     CREATE TABLE projects (
@@ -86,14 +87,3 @@
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX idx_sessions_token ON sessions(token); -- Requirement: Index
-
-
-    INSERT INTO users (tenant_id, email, password_hash, full_name, role, is_active)
-VALUES (
-    NULL, 
-    'superadmin@system.com', 
-    '$2b$10$7R9M7v.X8lHhM3J4K3J4K.y8R6M7v.X8lHhM3J4K3J4K.y8R6M7v', 
-    'System Super Admin', 
-    'super_admin', 
-    true
-) ON CONFLICT DO NOTHING;
