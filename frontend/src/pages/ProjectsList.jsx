@@ -25,7 +25,7 @@ export default function ProjectsList() {
       const result = res.data.data;
 
       setProjects(Array.isArray(result.projects) ? result.projects : []);
-      setPage(result.pagination?.page || pageToLoad);
+      setPage(result.pagination?.currentPage || pageToLoad);
       setTotalPages(result.pagination?.totalPages || 1);
     } catch (err) {
       console.error("Failed to fetch projects", err);
@@ -92,7 +92,7 @@ export default function ProjectsList() {
                 <p>{(project.description || "").length > 140 ? project.description.slice(0, 140) + '...' : (project.description || 'No description')}</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                   <div>
-                    <p style={{ margin: 0 }}>Tasks: {project.task_count ?? 0}</p>
+                    <p style={{ margin: 0 }}>Tasks: {project.taskCount ?? 0}</p>
                     {project.createdBy && <p style={{ margin: 0, fontSize: 12, color: '#666' }}>By: {project.createdBy.fullName || project.createdBy.email}</p>}
                     <p style={{ margin: 0, fontSize: 12, color: '#666' }}>Created: {new Date(project.createdAt).toLocaleDateString()}</p>
                   </div>
@@ -103,31 +103,33 @@ export default function ProjectsList() {
                   </div>
                 </div>
 
-                {user?.role === "tenant_admin" && (
-                  <div className="card-actions">
-                    <button onClick={() => navigate(`/projects/${project.id}`)}>View</button>
-                    <button
-                      onClick={() => {
-                        setSelectedProject(project);
-                        setShowModal(true);
-                      }}
-                    >
-                      Edit
-                    </button>
+                <div className="card-actions">
+                  <button onClick={() => navigate(`/projects/${project.id}`)}>View</button>
+                  {user?.role === "tenant_admin" && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setSelectedProject(project);
+                          setShowModal(true);
+                        }}
+                      >
+                        Edit
+                      </button>
 
-                    <button
-                      className="danger"
-                      onClick={async () => {
-                        if (confirm("Delete this project?")) {
-                          await api.delete(`/projects/${project.id}`);
-                          fetchProjects();
-                        }
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
+                      <button
+                        className="danger"
+                        onClick={async () => {
+                          if (confirm("Delete this project?")) {
+                            await api.delete(`/projects/${project.id}`);
+                            fetchProjects();
+                          }
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>

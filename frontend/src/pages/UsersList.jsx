@@ -15,7 +15,7 @@ export default function UsersList() {
     </>
   );
 
-  if (user.role !== 'tenant_admin' && user.role !== 'super_admin') return (
+  if (user.role !== 'tenant_admin') return (
     <>
       <Navbar />
       <p style={{ padding: 24 }}>Access denied. Admins only.</p>
@@ -31,7 +31,10 @@ export default function UsersList() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/users", { params: { search: search || undefined, role: roleFilter || undefined } });
+      const tenantId = user?.tenantId;
+      const res = tenantId
+        ? await api.get(`/tenants/${tenantId}/users`, { params: { search: search || undefined, role: roleFilter || undefined } })
+        : await api.get("/users", { params: { search: search || undefined, role: roleFilter || undefined } });
       const data = res.data?.data?.users || [];
       setUsers(data);
     } catch (err) {

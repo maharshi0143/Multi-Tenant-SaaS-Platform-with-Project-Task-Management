@@ -1,10 +1,10 @@
 import axios from "axios";
 
+const envUrl = import.meta.env.VITE_API_URL;
 const baseURL =
-  import.meta.env.VITE_API_URL ||
-  (window.location.hostname === "localhost"
+  window.location.hostname === "localhost"
     ? "http://localhost:5000/api"
-    : "http://backend:5000/api");
+    : envUrl || "http://backend:5000/api";
 
 const instance = axios.create({
   baseURL,

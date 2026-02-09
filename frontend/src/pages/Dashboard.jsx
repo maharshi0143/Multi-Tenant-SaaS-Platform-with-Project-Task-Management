@@ -77,11 +77,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) loadDashboard();
-  }, [user]);
-
-  useEffect(() => {
-    loadDashboard();
-  }, []);
+  }, [user, taskFilter]);
 
 
   if (loading) {
@@ -167,7 +163,7 @@ export default function Dashboard() {
                   <h4>{project.name}</h4>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                     <span className={`status ${project.status}`}>{project.status}</span>
-                    <small style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Tasks: {project.task_count ?? 0}</small>
+                    <small style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Tasks: {project.taskCount ?? 0}</small>
                   </div>
                 </div>
               ))}
@@ -182,6 +178,7 @@ export default function Dashboard() {
           <h3>{user.role === 'super_admin' ? 'Recent System Tasks' : 'My Tasks'}</h3>
 
           <select
+            className="control-input"
             value={taskFilter}
             onChange={(e) => setTaskFilter(e.target.value)}
           >

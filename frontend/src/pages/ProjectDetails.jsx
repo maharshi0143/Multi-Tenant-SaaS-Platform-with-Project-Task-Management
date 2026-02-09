@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
+import Navbar from '../components/Navbar';
 
 const ProjectDetails = () => {
     const { id: projectId } = useParams();
@@ -23,11 +24,13 @@ const ProjectDetails = () => {
             try {
                 // API 14: Get single project details
                 const res = await api.get(`/projects/${projectId}`);
-                setProject(res.data.data);
-                setTasks(res.data.data.tasks || []);
+                const projectData = res.data.data;
+                setProject(projectData);
+                setTasks(projectData.tasks || []);
                 // fetch tenant users for assignment dropdown
                 try {
-                    const u = await api.get('/users');
+                    const tenantId = projectData.tenantId;
+                    const u = tenantId ? await api.get(`/tenants/${tenantId}/users`) : await api.get('/users');
                     // FIX: users endpoint returns { users: [], count: ... }
                     setUsers(u.data?.data?.users || []);
                 } catch (e) {
@@ -42,13 +45,13 @@ const ProjectDetails = () => {
         fetchDetails();
     }, [projectId]);
 
-    const fetchTasks = async (page = 1) => {
+    const fetchTasks = async () => {
         try {
             const params = { page: 1, limit: 200 };
             if (statusFilter) params.status = statusFilter;
             if (priorityFilter) params.priority = priorityFilter;
             if (assignedFilter) params.assignedTo = assignedFilter;
-            const res = await api.get(`/tasks/projects/${projectId}`, { params });
+            const res = await api.get(`/projects/${projectId}/tasks`, { params });
             const data = res.data?.data || {};
             setTasks(data.tasks || []);
         } catch (e) {
@@ -56,10 +59,16 @@ const ProjectDetails = () => {
         }
     };
 
-    if (loading) return <div className="dashboard-container">Loading details...</div>;
+    useEffect(() => {
+        if (projectId) fetchTasks();
+    }, [projectId, statusFilter, priorityFilter, assignedFilter]);
+
+    if (loading) return (<><Navbar /><div className="dashboard-container">Loading details...</div></>);
 
     if (!project) {
         return (
+            <>
+            <Navbar />
             <div className="dashboard-container" style={{ textAlign: 'center', marginTop: '4rem' }}>
                 <h2>Project Not Found</h2>
                 <p>The project you are looking for does not exist or has been deleted.</p>
@@ -68,10 +77,13 @@ const ProjectDetails = () => {
                     <button className="primary-btn" onClick={() => window.location.href = '/projects'}>View All Projects</button>
                 </div>
             </div>
+            </>
         );
     }
 
     return (
+        <>
+        <Navbar />
         <div className="dashboard-container">
             <header style={{ marginBottom: '30px' }}>
                 <span className={`status-badge status-${project?.status || 'active'}`}>{project?.status}</span>
@@ -110,7 +122,7 @@ const ProjectDetails = () => {
                         <select
                             className="control-input"
                             value={statusFilter}
-                            onChange={(e) => { setStatusFilter(e.target.value); fetchTasks(); }}
+                            onChange={(e) => setStatusFilter(e.target.value)}
                         >
                             <option value="">All status</option>
                             <option value="todo">Todo</option>
@@ -120,7 +132,7 @@ const ProjectDetails = () => {
                         <select
                             className="control-input"
                             value={priorityFilter}
-                            onChange={(e) => { setPriorityFilter(e.target.value); fetchTasks(); }}
+                            onChange={(e) => setPriorityFilter(e.target.value)}
                         >
                             <option value="">All priority</option>
                             <option value="high">High</option>
@@ -130,7 +142,7 @@ const ProjectDetails = () => {
                         <select
                             className="control-input"
                             value={assignedFilter}
-                            onChange={(e) => { setAssignedFilter(e.target.value); fetchTasks(); }}
+                            onChange={(e) => setAssignedFilter(e.target.value)}
                         >
                             <option value="">All assignees</option>
                             {users.map(u => (<option key={u.id} value={u.id}>{u.fullName || u.email}</option>))}
@@ -265,8 +277,8 @@ const ProjectDetails = () => {
                                         description: editTask.description,
                                         priority: editTask.priority,
                                         status: editTask.status,
-                                        assigned_to: editTask.assignedTo?.id || null,
-                                        due_date: editTask.dueDate || null
+                                        assignedTo: editTask.assignedTo?.id || null,
+                                        dueDate: editTask.dueDate || null
                                     };
                                     await api.put(`/tasks/${editTask.id}`, payload);
                                     const res = await api.get(`/projects/${projectId}`);
@@ -343,12 +355,12 @@ const ProjectDetails = () => {
                             <button type="submit" className="primary-btn" onClick={async () => {
                                 if (!newTask.title) return alert('Title is required');
                                 try {
-                                    await api.post(`/tasks/projects/${projectId}`, {
+                                    await api.post(`/projects/${projectId}/tasks`, {
                                         title: newTask.title,
                                         description: newTask.description,
                                         priority: newTask.priority,
                                         assignedTo: newTask.assignedTo,
-                                        due_date: newTask.dueDate || null
+                                        dueDate: newTask.dueDate || null
                                     });
                                     await fetchTasks();
                                     setShowAddTask(false);
@@ -363,6 +375,7 @@ const ProjectDetails = () => {
                 </div>
             )}
         </div>
+        </>
     );
 };
 

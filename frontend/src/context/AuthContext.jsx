@@ -13,10 +13,9 @@ export function AuthProvider({ children }) {
       const res = await axios.get("/auth/me");
       const data = res.data.data;
 
-
       const userData = {
         ...data,
-        tenantId: data.tenantId || data.tenant_id || null,
+        tenantId: data.tenantId || data.tenant_id || data.tenant?.id || null,
       };
 
       setUser(userData);
@@ -66,7 +65,7 @@ export function AuthProvider({ children }) {
       // Update local state with normalized data to prevent the loop
       const normalizedUser = {
         ...loginUser,
-        tenantId: loginUser.tenantId || loginUser.tenant_id || null
+        tenantId: loginUser.tenantId || loginUser.tenant_id || loginUser.tenant?.id || null
       };
 
       setUser(normalizedUser);

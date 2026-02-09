@@ -19,13 +19,15 @@ export default function TaskList() {
       setLoading(true);
       try {
         // Use tenant-wide endpoint to get tasks assigned to user
-        const res = await api.get('/tasks', { params: { assignedTo: user.id, status: filter || undefined, page: pageToLoad, limit: 12 } });
+        const params = { status: filter || undefined, page: pageToLoad, limit: 12 };
+        if (user.role === 'user') params.assignedTo = user.id;
+        const res = await api.get('/tasks', { params });
         const data = res.data?.data || {};
         const rows = data.tasks || [];
         // map project name into projectName for compatibility
         const assigned = rows.map(r => ({ ...r, projectName: r.project_name || r.projectName }));
         setTasks(assigned);
-        setPage(data.pagination?.page || pageToLoad);
+        setPage(data.pagination?.currentPage || pageToLoad);
         setTotalPages(data.pagination?.totalPages || 1);
       } catch (err) {
         setTasks([]);
@@ -60,7 +62,7 @@ export default function TaskList() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
             {tasks.map(t => (
-              <div key={t.id} className="task-card" onClick={() => navigate(`/projects/${t.project_id}`)} style={{ cursor: 'pointer' }}>
+              <div key={t.id} className="task-card" onClick={() => navigate(`/projects/${t.project_id || t.projectId}`)} style={{ cursor: 'pointer' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                     <span className={`status ${t.status || 'todo'}`} style={{ fontSize: '0.7rem' }}>{t.status?.replace('_', ' ') || 'Todo'}</span>
@@ -88,7 +90,7 @@ export default function TaskList() {
           <button
             className="pagination-btn"
             disabled={page <= 1}
-            onClick={() => { const p = page - 1; setPage(p); /* reload */ (async () => { setLoading(true); try { const res = await api.get('/tasks', { params: { assignedTo: user.id, status: filter || undefined, page: p, limit: 12 } }); const data = res.data?.data || {}; setTasks((data.tasks || []).map(r => ({ ...r, projectName: r.project_name || r.projectName }))); setPage(data.pagination?.page || p); setTotalPages(data.pagination?.totalPages || 1); } catch (e) { } finally { setLoading(false); } })() }}
+            onClick={() => { const p = page - 1; setPage(p); /* reload */ (async () => { setLoading(true); try { const params = { status: filter || undefined, page: p, limit: 12 }; if (user.role === 'user') params.assignedTo = user.id; const res = await api.get('/tasks', { params }); const data = res.data?.data || {}; setTasks((data.tasks || []).map(r => ({ ...r, projectName: r.project_name || r.projectName }))); setPage(data.pagination?.currentPage || p); setTotalPages(data.pagination?.totalPages || 1); } catch (e) { } finally { setLoading(false); } })() }}
           >
             ← Previous
           </button>
@@ -96,7 +98,7 @@ export default function TaskList() {
           <button
             className="pagination-btn"
             disabled={page >= totalPages}
-            onClick={() => { const p = page + 1; setPage(p); (async () => { setLoading(true); try { const res = await api.get('/tasks', { params: { assignedTo: user.id, status: filter || undefined, page: p, limit: 12 } }); const data = res.data?.data || {}; setTasks((data.tasks || []).map(r => ({ ...r, projectName: r.project_name || r.projectName }))); setPage(data.pagination?.page || p); setTotalPages(data.pagination?.totalPages || 1); } catch (e) { } finally { setLoading(false); } })() }}
+            onClick={() => { const p = page + 1; setPage(p); (async () => { setLoading(true); try { const params = { status: filter || undefined, page: p, limit: 12 }; if (user.role === 'user') params.assignedTo = user.id; const res = await api.get('/tasks', { params }); const data = res.data?.data || {}; setTasks((data.tasks || []).map(r => ({ ...r, projectName: r.project_name || r.projectName }))); setPage(data.pagination?.currentPage || p); setTotalPages(data.pagination?.totalPages || 1); } catch (e) { } finally { setLoading(false); } })() }}
           >
             Next →
           </button>

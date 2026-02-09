@@ -3,15 +3,19 @@
    ========================================= */
 :root {
   /* COLORS */
-  --primary-color: #4f46e5;
+  --primary-color: #6366f1;
+  /* Indigo 500 */
+  --primary-hover: #4f46e5;
   /* Indigo 600 */
-  --primary-hover: #4338ca;
-  /* Indigo 700 */
-  --secondary-color: #0ea5e9;
-  /* Sky 500 */
-  --background-bg: #f3f4f6;
-  /* Gray 100 */
+  --secondary-color: #06b6d4;
+  /* Cyan 500 */
+  --accent-color: #f97316;
+  /* Orange 500 */
+  --background-bg: #f8fafc;
+  /* Slate 50 */
   --surface-white: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.7);
+  --surface-strong: #0f172a;
 
   --text-main: #111827;
   /* Gray 900 */
@@ -20,8 +24,8 @@
   --text-light: #9ca3af;
   /* Gray 400 */
 
-  --success-color: #10b981;
-  /* Emerald 500 */
+  --success-color: #22c55e;
+  /* Green 500 */
   --warning-color: #f59e0b;
   /* Amber 500 */
   --danger-color: #ef4444;
@@ -29,8 +33,8 @@
 
   /* SHADOWS */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 20px -12px rgba(15, 23, 42, 0.35);
+  --shadow-lg: 0 18px 40px -20px rgba(15, 23, 42, 0.45);
 
   /* BORDER RADIUS */
   --radius-md: 0.5rem;
@@ -42,14 +46,67 @@
 
   /* TRANSITIONS */
   --transition-fast: 0.2s ease;
+  --transition-med: 0.35s ease;
 }
 
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  background-color: var(--background-bg);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(99, 102, 241, 0.18), transparent 50%),
+    radial-gradient(1200px 600px at 90% -10%, rgba(6, 182, 212, 0.18), transparent 50%),
+    linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.08), rgba(249, 115, 22, 0.08));
+  background-size: 200% 200%;
+  animation: gradientShift 16s ease infinite;
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Dark mode overrides */
+body.theme-dark {
+  --background-bg: #0b1b3a;
+  --surface-white: #0f244a;
+  --surface-glass: rgba(15, 36, 74, 0.78);
+  --text-main: #f8fbff;
+  --text-secondary: #d6e4ff;
+  --text-light: #9bb6e5;
+  --primary-color: #4c7dff;
+  --primary-hover: #3b6ff2;
+  --secondary-color: #6fb6ff;
+  --shadow-sm: 0 1px 2px 0 rgba(2, 8, 23, 0.45);
+  --shadow-md: 0 10px 24px -14px rgba(2, 8, 23, 0.7);
+  --shadow-lg: 0 18px 40px -20px rgba(2, 8, 23, 0.75);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(76, 125, 255, 0.28), transparent 50%),
+    radial-gradient(1200px 600px at 90% -10%, rgba(111, 182, 255, 0.22), transparent 50%),
+    linear-gradient(135deg, #0b1b3a 0%, #0a1731 60%, #09152b 100%);
+}
+
+body.theme-dark .status.active {
+  background: rgba(111, 182, 255, 0.18);
+  color: #d6e8ff;
+}
+
+body.theme-dark .status.completed {
+  background: rgba(34, 197, 94, 0.18);
+  color: #c8f7d6;
+}
+
+body.theme-dark .status.archived {
+  background: rgba(148, 163, 184, 0.18);
+  color: #e2e8f0;
+}
+
+body.theme-dark .status.todo,
+body.theme-dark .status.in_progress {
+  background: rgba(249, 115, 22, 0.2);
+  color: #ffe3cc;
 }
 
 /* =========================================
@@ -60,17 +117,19 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #22d3ee 45%, #f97316 100%);
   padding: 20px;
 }
 
 .auth-card {
   width: 100%;
   max-width: 400px;
-  background: var(--surface-white);
+  background: var(--surface-glass);
   padding: 2.5rem;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(99, 102, 241, 0.2);
   animation: fadeIn 0.5s ease-out;
 }
 
@@ -127,20 +186,20 @@ body {
 .auth-card button {
   width: 100%;
   padding: 0.875rem;
-  background-color: var(--primary-color);
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   color: white;
   border: none;
   border-radius: var(--radius-md);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: var(--transition-fast);
+  transition: var(--transition-med);
   margin-top: 1rem;
 }
 
 .auth-card button:hover {
-  background-color: var(--primary-hover);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -12px rgba(99, 102, 241, 0.7);
 }
 
 .auth-card button:disabled {
@@ -437,6 +496,18 @@ body {
   color: var(--text-secondary);
 }
 
+body.theme-dark .modal-actions button[type="button"] {
+  background: rgba(15, 36, 74, 0.85);
+  border-color: rgba(111, 182, 255, 0.35);
+  color: #eaf2ff;
+}
+
+body.theme-dark .modal-actions .primary-btn,
+body.theme-dark .modal-actions button.primary-btn {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: #ffffff;
+}
+
 .modal-actions button[type="button"]:hover {
   background: #f9fafb;
 }
@@ -571,6 +642,31 @@ input:checked+.slider:before {
   font-size: 0.8rem;
   color: var(--text-secondary);
   margin: 0;
+}
+
+body.theme-dark .toggle-container {
+  background: rgba(15, 36, 74, 0.85);
+  border-color: rgba(111, 182, 255, 0.3);
+}
+
+body.theme-dark .toggle-label-text {
+  color: #f8fbff;
+}
+
+body.theme-dark .toggle-description {
+  color: #c6d9ff;
+}
+
+body.theme-dark .slider {
+  background-color: rgba(111, 182, 255, 0.25);
+}
+
+body.theme-dark input:checked + .slider {
+  background-color: #4c7dff;
+}
+
+body.theme-dark .slider:before {
+  background-color: #f8fbff;
 }
 
 /* =========================================
@@ -736,4 +832,50 @@ input:checked+.slider:before {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Dark mode controls */
+body.theme-dark .control-input,
+body.theme-dark .auth-card input,
+body.theme-dark .auth-card select,
+body.theme-dark .auth-card textarea,
+body.theme-dark .modal input,
+body.theme-dark .modal select,
+body.theme-dark .modal textarea {
+  background: rgba(15, 36, 74, 0.85);
+  color: #f8fbff;
+  border-color: rgba(111, 182, 255, 0.35);
+}
+
+body.theme-dark .control-input::placeholder,
+body.theme-dark .auth-card input::placeholder,
+body.theme-dark .modal input::placeholder,
+body.theme-dark .modal textarea::placeholder {
+  color: #bcd3ff;
+}
+
+body.theme-dark .secondary-btn {
+  background: rgba(15, 36, 74, 0.85);
+  color: #eaf2ff;
+  border-color: rgba(111, 182, 255, 0.35);
+}
+
+body.theme-dark .secondary-btn:hover {
+  background: rgba(111, 182, 255, 0.18);
+  border-color: rgba(111, 182, 255, 0.5);
+}
+
+body.theme-dark .primary-btn,
+body.theme-dark .auth-card button {
+  color: #ffffff;
+}
+
+body.theme-dark .pagination-btn {
+  background: rgba(15, 36, 74, 0.85);
+  color: #eaf2ff;
+  border-color: rgba(111, 182, 255, 0.35);
+}
+
+body.theme-dark .pagination-btn:disabled {
+  opacity: 0.5;
 }

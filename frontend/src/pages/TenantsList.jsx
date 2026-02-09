@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "../api/axios";
+import Navbar from "../components/Navbar";
 import "./Tenants.css";
 
 export default function TenantsList() {
@@ -33,9 +34,11 @@ export default function TenantsList() {
         }
     };
 
-    if (loading) return <div className="loading-text">Loading System Organizations...</div>;
+    if (loading) return (<><Navbar /><div className="loading-text">Loading System Organizations...</div></>);
 
     return (
+        <>
+        <Navbar />
         <div className="tenants-page">
             <h1 className="page-title">System Administration: Tenants</h1>
             <div className="tenants-card">
@@ -57,7 +60,7 @@ export default function TenantsList() {
                                 <td>{t.subdomain}</td>
                                 <td>
                                     <span className="role-badge" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                                        {t.subscription_plan}
+                                        {t.subscriptionPlan}
                                     </span>
                                 </td>
                                 <td>{t.totalUsers}</td>
@@ -89,5 +92,6 @@ export default function TenantsList() {
                 </table>
             </div>
         </div>
+        </>
     );
 }

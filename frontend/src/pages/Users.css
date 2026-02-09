@@ -1,6 +1,6 @@
 .users-page {
   padding: 2rem;
-  background-color: var(--background-bg);
+  background-color: transparent;
   min-height: calc(100vh - 64px);
   animation: fadeIn 0.5s ease-out;
 }
@@ -13,16 +13,17 @@
 }
 
 .users-card {
-  background: var(--surface-white);
+  background: rgba(255, 255, 255, 0.86);
   border-radius: var(--radius-xl);
   padding: 0;
   /* Remove default padding for full-width table */
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   max-width: 100%;
   /* Allow full width */
   overflow: hidden;
   /* For rounded corners on table */
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  backdrop-filter: blur(6px);
 }
 
 .users-table {
@@ -117,6 +118,26 @@
   /* Slate 100 */
   color: #475569;
   /* Slate 600 */
+}
+
+body.theme-dark .users-card {
+  background: rgba(15, 36, 74, 0.78);
+  border-color: rgba(111, 182, 255, 0.25);
+}
+
+body.theme-dark .users-table th {
+  background-color: rgba(15, 36, 74, 0.95);
+  color: #eaf2ff;
+  border-bottom-color: rgba(111, 182, 255, 0.2);
+}
+
+body.theme-dark .users-table td {
+  color: #d6e4ff;
+  border-bottom-color: rgba(111, 182, 255, 0.12);
+}
+
+body.theme-dark .users-table tr:hover td {
+  background-color: rgba(111, 182, 255, 0.08);
 }
 
 .loading-text,

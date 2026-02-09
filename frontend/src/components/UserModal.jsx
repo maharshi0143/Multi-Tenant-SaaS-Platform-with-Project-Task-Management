@@ -18,11 +18,12 @@ export default function UserModal({ user, onClose, onSaved }) {
       if (user) {
         const payload = { fullName, isActive };
         if (role) payload.role = role;
-        if (password) payload.password = password; // Enable password update
         await api.put(`/users/${user.id}`, payload);
       } else {
         if (!password) return alert('Password is required');
-        await api.post('/users', { email, password, fullName, role });
+        const tenantId = me?.tenantId;
+        const url = tenantId ? `/tenants/${tenantId}/users` : '/users';
+        await api.post(url, { email, password, fullName, role });
       }
       onSaved();
       onClose();
